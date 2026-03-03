@@ -1,93 +1,57 @@
-# MR-Fit
+# MR-Fit — AI-Powered Fitness Companion
 
-AI-powered personal fitness platform that delivers adaptive workout plans, real-time coaching, and wearable data integration — all in one unified application.
+MR-Fit is a comprehensive fitness tracking application featuring an AI coach, personalized recommendations, and wearable data integration. The platform allows users to log workouts, track nutrition, and interact with an AI trainer that provides tailored insights based on their personal fitness profiles and history.
 
-## Stack
+## Tech Stack
 
-| Layer | Technology |
+| Component | Technology |
 |---|---|
-| Frontend | Next.js 14 (App Router), TypeScript, Tailwind CSS |
-| Database | Supabase — PostgreSQL 15, Auth, Realtime, pgvector |
-| Automation | n8n (self-hosted workflow engine) |
-| AI | OpenAI GPT-4o, RAG pipeline with pgvector embeddings |
+| Frontend | Next.js 14, TypeScript, Tailwind CSS, Supabase SSR |
+| Backend | FastAPI, Python, sentence-transformers, pgvector |
+| Database | PostgreSQL via Supabase, pgvector extension |
+| AI | OpenAI gpt-4o-mini, RAG pipeline with vector search |
 
-## Repository Structure
+## Architecture Overview
 
-```
-mrfit/
-├── frontend/          # Next.js 14 App Router application
-├── backend/           # n8n workflow JSON exports and documentation
-├── ai/                # RAG pipeline, embedding scripts, vector DB setup
-├── database/          # Supabase schema SQL, seed data, migrations
-├── docs/              # API contract, architecture diagrams
-└── .github/workflows/ # CI/CD GitHub Actions
+```text
+User → Next.js Frontend → Supabase (Auth + DB)
+                       ↓
+                  FastAPI AI Service → OpenAI API
+                       ↓
+                  pgvector similarity search
 ```
 
 ## Getting Started
 
-### Prerequisites
+**Prerequisites:** Node.js 18+, Python 3.10+, Supabase account, OpenAI API key
 
-- Node.js 20+
-- Docker (for n8n and local Supabase)
-- Python 3.11+ (for AI scripts)
+1. Clone the repo
+2. `cd frontend && npm install`
+3. Copy `frontend/.env.local.example` to `frontend/.env.local` and fill in `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+4. Run `schema.sql` and `seed.sql` in Supabase SQL editor
+5. Run `functions.sql` in Supabase SQL editor
+6. `cd ai && pip install -r requirements.txt`
+7. Copy `ai/.env.example` to `ai/.env` and fill in your keys
+8. `python embed.py` (generates exercise embeddings)
+9. `uvicorn coach:app --reload` (start AI server)
+10. `npm run dev` (start frontend)
 
-### 1. Clone and install
+## Features
 
-```bash
-git clone https://github.com/zyadelfeki/MR-Fit.git
-cd MR-Fit
-cp .env.example .env.local
-```
-
-### 2. Configure environment variables
-
-Fill in `.env.local` with your credentials (see `.env.example` for required keys).
-
-### 3. Set up the database
-
-Apply the schema to your Supabase project:
-
-```bash
-psql "$SUPABASE_DB_URL" -f database/schema.sql
-```
-
-### 4. Run the frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-The app will be available at `http://localhost:3000`.
-
-### 5. Run AI scripts
-
-```bash
-cd ai
-pip install -r requirements.txt
-python embed.py
-```
-
-## Environment Variables
-
-See [`.env.example`](.env.example) for all required environment variables and their descriptions.
+- 🔐 Secure authentication flow via Supabase
+- 📊 Personalized user profiles with fitness goals and levels
+- 🏋️‍♂️ Comprehensive workout logging with sets, reps, and weights tracker
+- 🥗 Daily nutrition tracking with macros and calorie counting
+- 🤖 AI Coach powered by OpenAI and RAG for tailored advice
+- 🔍 Semantic similarity search for exercises using pgvector
+- 📱 Fully responsive, modern UI built with Tailwind CSS
 
 ## Database Schema
 
-Core tables: `users`, `profiles`, `workouts`, `exercises`, `workout_logs`, `wearable_data`.
-
-Full schema: [`database/schema.sql`](database/schema.sql)
-
-## API
-
-See [`docs/api-contract.md`](docs/api-contract.md) for the full REST and Realtime API contract.
-
-## Architecture
-
-See [`docs/architecture.md`](docs/architecture.md) for system architecture diagrams and data-flow documentation.
-
-## License
-
-MIT
-# MR-Fit
+- `profiles` — Stores user metadata like display name, fitness goal, and fitness level.
+- `exercises` — Core dictionary of exercises including descriptions and embeddings.
+- `workouts` — Contains top-level workout session details.
+- `workout_logs` — Links users, specific workouts, and sets/reps for each logged exercise.
+- `workout_exercises` — Defines target routines and sets/reps templates.
+- `nutrition_logs` — Daily food logs for calorie and macronutrient tracking.
+- `api_keys` — Secure storage for external API credentials (if applicable).
