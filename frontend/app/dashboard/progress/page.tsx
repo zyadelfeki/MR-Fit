@@ -1,7 +1,5 @@
 import { createClient } from "../../../../lib/supabase/server";
 import { redirect } from "next/navigation";
-import VolumeChart from "../../../../components/VolumeChart";
-
 // Helper to get week number
 function getWeekNumber(d: Date) {
     d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -9,6 +7,13 @@ function getWeekNumber(d: Date) {
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
     const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
     return weekNo;
+}
+
+let VolumeChart: any = null;
+try {
+    VolumeChart = require("../../../../components/VolumeChart").default;
+} catch (e) {
+    console.error("VolumeChart import failed:", e);
 }
 
 export default async function ProgressPage() {
@@ -127,7 +132,32 @@ export default async function ProgressPage() {
                     <h2 className="text-xl font-bold text-gray-900">Total Volume Over Time</h2>
                     <p className="text-sm text-gray-500 mt-1">Sum of sets × reps × weight (kg) for the last 8 weeks</p>
                 </div>
-                <VolumeChart data={volumeChartData} />
+                {(!rawLogs || rawLogs.length === 0) ? (
+                    <div className="text-center py-12">
+                        <p className="text-gray-500">Log some workouts to start tracking your progress</p>
+                    </div>
+                ) : VolumeChart ? (
+                    <VolumeChart data={volumeChartData} />
+                ) : (
+                    <div className="overflow-x-auto mt-4">
+                        <table className="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead>
+                                <tr>
+                                    <th className="px-4 py-2 text-left text-gray-500 font-medium">Week</th>
+                                    <th className="px-4 py-2 text-right text-gray-500 font-medium">Volume (kg)</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {volumeChartData.map((d, i) => (
+                                    <tr key={i}>
+                                        <td className="px-4 py-2 text-gray-900">{d.week}</td>
+                                        <td className="px-4 py-2 text-right font-medium text-blue-600">{d.volume.toLocaleString()}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </section>
 
             <div className="grid md:grid-cols-2 gap-8">

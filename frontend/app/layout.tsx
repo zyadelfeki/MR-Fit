@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "MR-Fit",
-  description: "AI-powered adaptive fitness platform",
+  title: { default: "MR-Fit", template: "%s | MR-Fit" },
+  description: "AI-powered fitness companion — workouts, nutrition, and personalized coaching",
 };
 
 export default function RootLayout({

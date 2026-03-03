@@ -45,8 +45,21 @@ export default async function DashboardPage() {
     const caloriesToday = nutritionToday?.reduce((sum, log) => sum + (log.calories || 0), 0) || 0;
 
     // Active Streak
-    const { data: workouts } = await supabase.from("workout_logs").select("logged_at").eq("user_id", user.id);
-    const { data: nutrition } = await supabase.from("nutrition_logs").select("logged_at").eq("user_id", user.id);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgoStr = thirtyDaysAgo.toISOString();
+
+    const { data: workouts } = await supabase
+        .from("workout_logs")
+        .select("logged_at")
+        .eq("user_id", user.id)
+        .gte("logged_at", thirtyDaysAgoStr);
+
+    const { data: nutrition } = await supabase
+        .from("nutrition_logs")
+        .select("logged_at")
+        .eq("user_id", user.id)
+        .gte("logged_at", thirtyDaysAgoStr);
 
     const activityDates = new Set<string>();
     workouts?.forEach((w) => { if (w.logged_at) activityDates.add(w.logged_at.split('T')[0]) });

@@ -245,14 +245,23 @@ export default function AICoachPage() {
             {/* Input Area */}
             <div className="bg-white dark:bg-gray-800 p-4 border-t border-gray-200 dark:border-gray-700">
                 <form onSubmit={handleSubmit} className="flex gap-2">
-                    <input
-                        type="text"
+                    <textarea
                         value={input}
-                        onChange={(e) => setInput(e.target.value)}
+                        onChange={(e) => {
+                            setInput(e.target.value);
+                            e.target.style.height = 'auto';
+                            e.target.style.height = Math.min(e.target.scrollHeight, 100) + 'px';
+                        }}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSubmit(e as unknown as React.FormEvent);
+                            }
+                        }}
+                        rows={1}
                         disabled={sending || loading}
                         placeholder="Ask about fitness, form, or routines..."
-                        className="flex-1 rounded-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-6 py-3 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50 text-sm sm:text-base outline-none ring-1 ring-inset ring-gray-300 dark:ring-gray-600"
-                        autoComplete="off"
+                        className="flex-1 resize-none overflow-hidden rounded-2xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-6 py-3 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50 text-sm sm:text-base outline-none ring-1 ring-inset ring-gray-300 dark:ring-gray-600 min-h-[44px]"
                     />
                     <button
                         type="submit"

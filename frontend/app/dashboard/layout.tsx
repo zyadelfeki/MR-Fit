@@ -63,8 +63,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     key={link.name}
                                     href={link.href}
                                     className={`block px-4 py-3 rounded-md transition-colors ${isActive
-                                        ? "bg-blue-50 text-blue-700 font-semibold"
-                                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                                        ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold"
+                                        : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-white"
                                         }`}
                                     onClick={() => setIsMobileMenuOpen(false)}
                                 >
