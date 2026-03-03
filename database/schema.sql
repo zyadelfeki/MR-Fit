@@ -226,3 +226,38 @@ create policy "wearable_data_insert_own" on wearable_data
 
 create policy "wearable_data_update_own" on wearable_data
   for update using (user_id = (select id from users where auth_id = auth.uid()));
+
+-- =============================================================================
+-- Table: workout_exercises
+-- Links exercises to workouts with sets/reps/order
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS workout_exercises (
+  id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  workout_id     UUID        NOT NULL REFERENCES workouts(id) ON DELETE CASCADE,
+  exercise_id    UUID        NOT NULL REFERENCES exercises(id),
+  sets_target    INTEGER     NOT NULL DEFAULT 3,
+  reps_target    INTEGER     NOT NULL DEFAULT 10,
+  weight_kg      NUMERIC(6,2),
+  order_index    INTEGER     NOT NULL DEFAULT 0
+);
+
+CREATE TRIGGER trg_workout_exercises_updated_at
+  BEFORE UPDATE ON workout_exercises
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_workout_exercises_workout_id
+  ON workout_exercises(workout_id);
+
+ALTER TABLE workout_exercises ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "workout_exercises_select_own" ON workout_exercises
+  FOR SELECT USING (
+    workout_id IN (SELECT id FROM workouts WHERE user_id = (SELECT id FROM users WHERE auth_id = auth.uid()))
+  );
+
+CREATE POLICY "workout_exercises_insert_own" ON workout_exercises
+  FOR INSERT WITH CHECK (
+    workout_id IN (SELECT id FROM workouts WHERE user_id = (SELECT id FROM users WHERE auth_id = auth.uid()))
+  );
