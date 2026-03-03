@@ -14,9 +14,9 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json();
-        const { message } = body;
+        const { message, messages } = body;
 
-        if (!message) {
+        if (!message && (!messages || messages.length === 0)) {
             return NextResponse.json(
                 { error: "Message is required" },
                 { status: 400 }
@@ -34,6 +34,7 @@ export async function POST(req: Request) {
             body: JSON.stringify({
                 user_id: user.id,
                 message: message,
+                messages: messages || [],
             }),
         });
 

@@ -1,11 +1,6 @@
 import { createClient } from "../../lib/supabase/server";
 import { redirect } from "next/navigation";
 
-function formatText(str: string) {
-    if (!str) return "";
-    return str.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-}
-
 export default async function DashboardPage() {
     const supabase = await createClient();
 
@@ -29,7 +24,7 @@ export default async function DashboardPage() {
     const now = new Date();
     const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
 
-    // Attempt to fetch workout count. If table doesn't exist yet, it will return an error, handle gracefully.
+    // Workouts this week
     const { count: workoutsThisWeek, error: workoutsError } = await supabase
         .from("workout_logs")
         .select("*", { count: "exact", head: true })
@@ -38,35 +33,70 @@ export default async function DashboardPage() {
 
     const displayWorkouts = workoutsError ? 0 : (workoutsThisWeek || 0);
 
+    // Calories today
+    const todayStr = new Date().toISOString().split("T")[0];
+    const { data: nutritionToday } = await supabase
+        .from("nutrition_logs")
+        .select("calories")
+        .eq("user_id", user.id)
+        .gte("logged_at", todayStr + "T00:00:00")
+        .lt("logged_at", todayStr + "T23:59:59");
+
+    const caloriesToday = nutritionToday?.reduce((sum, log) => sum + (log.calories || 0), 0) || 0;
+
+    // Active Streak
+    const { data: workouts } = await supabase.from("workout_logs").select("logged_at").eq("user_id", user.id);
+    const { data: nutrition } = await supabase.from("nutrition_logs").select("logged_at").eq("user_id", user.id);
+
+    const activityDates = new Set<string>();
+    workouts?.forEach((w) => { if (w.logged_at) activityDates.add(w.logged_at.split('T')[0]) });
+    nutrition?.forEach((n) => { if (n.logged_at) activityDates.add(n.logged_at.split('T')[0]) });
+
+    let streak = 0;
+    let checkDate = new Date();
+
+    // Normalize to midnight UTC for date comparison
+    checkDate.setUTCHours(0, 0, 0, 0);
+
+    // Check today first, if not check yesterday
+    if (!activityDates.has(checkDate.toISOString().split('T')[0])) {
+        checkDate.setUTCDate(checkDate.getUTCDate() - 1);
+    }
+
+    while (activityDates.has(checkDate.toISOString().split('T')[0])) {
+        streak++;
+        checkDate.setUTCDate(checkDate.getUTCDate() - 1);
+    }
+
     return (
         <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-8 dark:text-white">
                 Welcome back, {profile.display_name}!
             </h1>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Card 1: Fitness Goal */}
-                <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Fitness Goal</h3>
-                    <p className="text-2xl font-bold text-gray-900">{formatText(profile.fitness_goal)}</p>
+                {/* Card 1: Workouts This Week */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center text-center">
+                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Workouts This Week</h3>
+                    <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{displayWorkouts}</p>
                 </div>
 
-                {/* Card 2: Fitness Level */}
-                <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Fitness Level</h3>
-                    <p className="text-2xl font-bold text-gray-900">{formatText(profile.fitness_level)}</p>
+                {/* Card 2: Calories Today */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center text-center">
+                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Calories Today</h3>
+                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">{caloriesToday} kcal</p>
                 </div>
 
-                {/* Card 3: Workouts This Week */}
-                <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Workouts This Week</h3>
-                    <p className="text-2xl font-bold text-gray-900">{displayWorkouts}</p>
+                {/* Card 3: Current Weight */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center text-center">
+                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Current Weight</h3>
+                    <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{profile.weight_kg ? `${profile.weight_kg} kg` : '--'}</p>
                 </div>
 
-                {/* Card 4: Current Weight */}
-                <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Current Weight</h3>
-                    <p className="text-2xl font-bold text-gray-900">{profile.weight_kg} kg</p>
+                {/* Card 4: Active Streak */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center text-center">
+                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Active Streak</h3>
+                    <p className="text-3xl font-bold text-orange-500">{streak} {streak === 1 ? 'Day' : 'Days'} 🔥</p>
                 </div>
             </div>
 

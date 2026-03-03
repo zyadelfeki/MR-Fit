@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
@@ -22,7 +22,7 @@ type Profile = {
 
 export default function ProfilePage() {
     const router = useRouter();
-    const supabase = createClient();
+    const supabase = useMemo(() => createClient(), []);
 
     const [userId, setUserId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -115,6 +115,7 @@ export default function ProfilePage() {
                 weight_kg: profile.weight_kg ? Number(profile.weight_kg) : null,
                 fitness_goal: profile.fitness_goal || null,
                 fitness_level: profile.fitness_level || null,
+                updated_at: new Date().toISOString(),
             };
 
             const { error: reqError } = await supabase
@@ -132,9 +133,24 @@ export default function ProfilePage() {
         }
     };
 
-    const handleDeleteAccount = () => {
-        // Placeholder for actual delete API calling /api/delete-account
-        router.push("/login");
+    const handleDeleteAccount = async () => {
+        if (!window.confirm("Are you sure? This cannot be undone.")) return;
+
+        try {
+            setSaving(true);
+            const res = await fetch("/api/delete-account", { method: "POST" });
+            const data = await res.json();
+
+            if (!res.ok) throw new Error(data.error);
+
+            await supabase.auth.signOut();
+            router.push("/login");
+        } catch (error: any) {
+            setError(error.message);
+        } finally {
+            setSaving(false);
+            setShowDeleteModal(false);
+        }
     };
 
     if (loading) {

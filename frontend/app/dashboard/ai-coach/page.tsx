@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type Exercise = {
@@ -25,7 +25,7 @@ export default function AICoachPage() {
     const [sending, setSending] = useState(false);
     const [userName, setUserName] = useState<string>("there");
 
-    const supabase = createClient();
+    const supabase = useMemo(() => createClient(), []);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -91,12 +91,20 @@ export default function AICoachPage() {
         setSending(true);
 
         try {
+            const messagesToSend = [...messages, newUserMsg].map(m => ({
+                role: m.role === "ai" ? "assistant" : "user",
+                content: m.text
+            }));
+
             const res = await fetch("/api/ai-coach", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ message: userMessageText }),
+                body: JSON.stringify({
+                    message: userMessageText,
+                    messages: messagesToSend
+                }),
             });
 
             if (!res.ok) {

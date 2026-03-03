@@ -2,6 +2,7 @@ import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import List, Optional
 from supabase import create_client, Client
 from sentence_transformers import SentenceTransformer
 import httpx
@@ -30,9 +31,14 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
 class RecommendRequest(BaseModel):
     user_id: str
-    message: str
+    message: Optional[str] = None
+    messages: Optional[List[ChatMessage]] = None
 
 @app.get("/health")
 def health_check():
@@ -41,6 +47,16 @@ def health_check():
 @app.post("/recommend")
 async def recommend(req: RecommendRequest):
     try:
+        user_message_text = req.message
+        if not user_message_text and req.messages:
+            for m in reversed(req.messages):
+                if m.role == "user":
+                    user_message_text = m.content
+                    break
+                    
+        if not user_message_text:
+            raise HTTPException(status_code=400, detail="No message provided")
+
         # 1. Fetch user profile
         profile_res = supabase.table("profiles").select("display_name, fitness_goal, fitness_level").eq("user_id", req.user_id).single().execute()
         profile = profile_res.data if profile_res.data else {}
@@ -63,7 +79,7 @@ async def recommend(req: RecommendRequest):
             recent_workouts_str = "No recent workouts found."
 
         # 3. Embed message
-        query_embedding = model.encode(req.message).tolist()
+        query_embedding = model.encode(user_message_text).tolist()
 
         # 4. Perform vector similarity search
         rpc_res = supabase.rpc("match_exercises", {
@@ -85,9 +101,27 @@ async def recommend(req: RecommendRequest):
         Recommended Exercises based on message:
         {matched_exercises}
         
-        User Message:
-        {req.message}
+        Recommended Exercises based on message:
+        {matched_exercises}
         """
+
+        openai_messages = [
+            {
+                "role": "system",
+                "content": "You are MR-Fit AI Coach. You give personalized, specific workout and exercise recommendations. Keep responses concise (under 150 words). Always be encouraging.\n\n" + context_str
+            }
+        ]
+
+        if req.messages:
+            for m in req.messages:
+                # Ensure valid role for openai
+                role = "assistant" if m.role == "ai" or m.role == "assistant" else "user"
+                # Skip welcome message if it's the exact one we put
+                if role == "assistant" and "Hi" in m.content and "I'm your MR-Fit AI Coach" in m.content:
+                    continue
+                openai_messages.append({"role": role, "content": m.content})
+        else:
+            openai_messages.append({"role": "user", "content": user_message_text})
 
         # 6. Call OpenAI
         if not OPENAI_API_KEY:
@@ -106,16 +140,7 @@ async def recommend(req: RecommendRequest):
                 },
                 json={
                     "model": "gpt-4o-mini",
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "You are MR-Fit AI Coach. You give personalized, specific workout and exercise recommendations. Keep responses concise (under 150 words). Always be encouraging."
-                        },
-                        {
-                            "role": "user",
-                            "content": context_str
-                        }
-                    ],
+                    "messages": openai_messages,
                     "max_tokens": 200,
                     "temperature": 0.7
                 },

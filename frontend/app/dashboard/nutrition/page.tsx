@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type NutritionLog = {
@@ -15,7 +15,7 @@ type NutritionLog = {
 };
 
 export default function NutritionPage() {
-    const supabase = createClient();
+    const supabase = useMemo(() => createClient(), []);
     const [logs, setLogs] = useState<NutritionLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -38,16 +38,15 @@ export default function NutritionPage() {
             const userId = userData?.user?.id;
             if (!userId) throw new Error("Not authenticated");
 
-            // Generate start of today in local timezone for "today midnight"
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const todayIso = today.toISOString();
+            // Use local date string comparison to avoid UTC offset issues
+            const todayStr = new Date().toISOString().split("T")[0];
 
             const { data, error } = await supabase
                 .from("nutrition_logs")
                 .select("*")
                 .eq("user_id", userId)
-                .gte("logged_at", todayIso)
+                .gte("logged_at", todayStr + "T00:00:00")
+                .lt("logged_at", todayStr + "T23:59:59")
                 .order("logged_at", { ascending: false });
 
             if (error) throw error;
@@ -82,9 +81,9 @@ export default function NutritionPage() {
             const userId = userData?.user?.id;
             if (!userId) throw new Error("Not authenticated");
 
-            // We append a time to the date so it's a valid timestamp, 
-            // or we can just send it. Let's send it as midnight of the inputted date.
-            const timestamp = new Date(loggedDate).toISOString();
+            // Append noon to the date so it stays on the selected calendar day
+            // regardless of the user's timezone offset when rendered.
+            const timestamp = loggedDate + "T12:00:00";
 
             const { error: insertError } = await supabase.from("nutrition_logs").insert([
                 {

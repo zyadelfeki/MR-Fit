@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../../../lib/supabase/client";
 import Link from "next/link";
 
 export default function NewWorkoutPage() {
     const router = useRouter();
-    const supabase = createClient();
+    const supabase = useMemo(() => createClient(), []);
 
     const [title, setTitle] = useState("");
     const [scheduledAt, setScheduledAt] = useState("");

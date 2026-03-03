@@ -261,3 +261,39 @@ CREATE POLICY "workout_exercises_insert_own" ON workout_exercises
   FOR INSERT WITH CHECK (
     workout_id IN (SELECT id FROM workouts WHERE user_id = (SELECT id FROM users WHERE auth_id = auth.uid()))
   );
+
+-- =============================================================================
+-- Table: nutrition_logs
+-- User dietary logs and macros
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS public.nutrition_logs (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    food_name TEXT NOT NULL,
+    calories INTEGER NOT NULL,
+    protein_g NUMERIC,
+    carbs_g NUMERIC,
+    fat_g NUMERIC,
+    logged_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Performance Indexes
+CREATE INDEX IF NOT EXISTS idx_workout_logs_user_id ON public.workout_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_nutrition_logs_user_id ON public.nutrition_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_nutrition_logs_logged_at ON public.nutrition_logs(logged_at);
+
+ALTER TABLE public.nutrition_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "nutrition_logs_select_own" ON public.nutrition_logs
+  FOR SELECT USING (user_id = auth.uid());
+
+CREATE POLICY "nutrition_logs_insert_own" ON public.nutrition_logs
+  FOR INSERT WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "nutrition_logs_update_own" ON public.nutrition_logs
+  FOR UPDATE USING (user_id = auth.uid());
+
+CREATE POLICY "nutrition_logs_delete_own" ON public.nutrition_logs
+  FOR DELETE USING (user_id = auth.uid());
+

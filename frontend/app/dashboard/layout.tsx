@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "../../lib/supabase/client";
@@ -17,7 +17,7 @@ const navLinks = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
-    const supabase = createClient();
+    const supabase = useMemo(() => createClient(), []);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [userEmail, setUserEmail] = useState<string | null>(null);
 
@@ -63,8 +63,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     key={link.name}
                                     href={link.href}
                                     className={`block px-4 py-3 rounded-md transition-colors ${isActive
-                                            ? "bg-blue-50 text-blue-700 font-semibold"
-                                            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                                        ? "bg-blue-50 text-blue-700 font-semibold"
+                                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                                         }`}
                                     onClick={() => setIsMobileMenuOpen(false)}
                                 >
