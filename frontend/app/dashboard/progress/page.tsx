@@ -1,5 +1,12 @@
 import { createClient } from "../../../../lib/supabase/server";
 import { redirect } from "next/navigation";
+import dynamic from "next/dynamic";
+
+const VolumeChart = dynamic(() => import("../../../../components/VolumeChart"), {
+    ssr: false,
+    loading: () => <div className="h-48 animate-pulse bg-gray-100 rounded-lg" />,
+});
+
 // Helper to get week number
 function getWeekNumber(d: Date) {
     d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -7,13 +14,6 @@ function getWeekNumber(d: Date) {
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
     const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
     return weekNo;
-}
-
-let VolumeChart: any = null;
-try {
-    VolumeChart = require("../../../../components/VolumeChart").default;
-} catch (e) {
-    console.error("VolumeChart import failed:", e);
 }
 
 export default async function ProgressPage() {
