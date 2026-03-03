@@ -45,39 +45,22 @@ async def recommend(req: RecommendRequest):
         profile_res = supabase.table("profiles").select("display_name, fitness_goal, fitness_level").eq("user_id", req.user_id).single().execute()
         profile = profile_res.data if profile_res.data else {}
         
-        # 2. Fetch last 5 workout logs and join with exercises name
-        # We assume the schema has "workout_exercises" linked to "exercises" or "workout_logs" table
-        # We will attempt a standard join (workouts -> workout_exercises -> exercises) if possible, 
-        # or just fetch the user's workouts if the structure is unknown. Instruction says:
-        # "user's last 5 workout_logs (joined with exercise name)".
-        # Let's write a reasonable typical query for supabase.
-        logs_res = supabase.table("workout_exercises").select(
-            "id, weight_kg, reps, sets, exercises(name)"
-        ).eq("user_id", req.user_id).order("created_at", desc=True).limit(5).execute()
+        # 2. Fetch last 5 workout logs joined with exercise name
+        logs_res = supabase.table("workout_logs").select(
+            "sets_completed, reps_completed, weight_kg, logged_at, exercises(name)"
+        ).eq("user_id", req.user_id).order("logged_at", desc=True).limit(5).execute()
         
-        # We might need to adjust the relation depending on actual DB, but if it fails we can catch it.
-        # Actually user instructions says: "Fetches the user's last 5 workout_logs (joined with exercise name)"
-        logs_data = []
-        # If the above fails because user_id isn't on workout_exercises, we might need a different path.
-        # Let's try standard workouts logs.
-        try:
-           logs_res_v2 = supabase.table("workouts").select(
-               "id, created_at, name" # or whatever the schema has
-           ).eq("user_id", req.user_id).order("created_at", desc=True).limit(5).execute()
-        except:
-           pass # ignoring
-           
-        # Actually I will use generic table 'workouts' as typically defined if standard isn't available, or I will use text representation.
-        # Let's perform a safer query by just looking at "workouts" table if it exists
-        try:
-             workouts_res = supabase.table("workout_exercises").select(
-                 "*, exercises:exercise_id(name)"
-             ).eq("user_id", req.user_id).order("created_at", desc=True).limit(5).execute()
-             logs_data = workouts_res.data
-        except:
-             pass
-
-        recent_workouts_str = "Recent Workouts: " + str(logs_data) if logs_data else "No recent workouts found."
+        logs_data = logs_res.data or []
+        
+        if logs_data:
+            recent_workouts_str = "Recent Workouts:\n" + "\n".join([
+                f"- {log.get('exercises', {}).get('name', 'Unknown')}: "
+                f"{log.get('sets_completed')}x{log.get('reps_completed')} "
+                f"@ {log.get('weight_kg', 'bodyweight')}kg"
+                for log in logs_data
+            ])
+        else:
+            recent_workouts_str = "No recent workouts found."
 
         # 3. Embed message
         query_embedding = model.encode(req.message).tolist()
