@@ -20,12 +20,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const supabase = useMemo(() => createClient(), []);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [userEmail, setUserEmail] = useState<string | null>(null);
+    const [displayName, setDisplayName] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchUser = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
                 setUserEmail(user.email ?? null);
+                const { data } = await supabase.from("profiles").select("display_name").eq("user_id", user.id).single();
+                if (data) {
+                    setDisplayName(data.display_name);
+                }
             }
         };
         fetchUser();
@@ -47,7 +52,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
 
             {/* Sidebar */}
-            <div className={`fixed inset-y-0 left-0 z-30 w-64 bg-white border-r transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <div className={`fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <div className="flex flex-col h-full">
                     {/* Logo/Brand */}
                     <div className="flex items-center justify-center h-16 border-b px-4">
@@ -75,10 +80,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </nav>
 
                     {/* User Info & Sign Out */}
-                    <div className="p-4 border-t">
+                    <div className="p-4 border-t dark:border-gray-700">
                         {userEmail && (
-                            <div className="mb-4 text-sm text-gray-600 truncate px-2">
-                                {userEmail}
+                            <div className="flex items-center gap-3 mb-4 px-2">
+                                <div className="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                    {displayName ? displayName[0].toUpperCase() : userEmail?.[0]?.toUpperCase() || "?"}
+                                </div>
+                                <div className="overflow-hidden">
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{displayName || "User"}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{userEmail}</p>
+                                </div>
                             </div>
                         )}
                         <button
@@ -92,9 +103,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-900">
                 {/* Mobile Header / Hamburger */}
-                <header className="flex items-center justify-between h-16 px-4 bg-white border-b md:hidden">
+                <header className="flex items-center justify-between h-16 px-4 bg-white dark:bg-gray-900 border-b dark:border-gray-700 md:hidden">
                     <span className="text-xl font-bold text-blue-600">MR-Fit</span>
                     <button
                         onClick={() => setIsMobileMenuOpen(true)}

@@ -1,8 +1,8 @@
-import { createClient } from "../../../../lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import dynamic from "next/dynamic";
 
-const VolumeChart = dynamic(() => import("../../../../components/VolumeChart"), {
+const VolumeChart: any = dynamic(() => import("@/components/VolumeChart"), {
     ssr: false,
     loading: () => <div className="h-48 animate-pulse bg-gray-100 rounded-lg" />,
 });
@@ -53,7 +53,7 @@ export default async function ProgressPage() {
     }
 
     if (!rawLogsError && rawLogs) {
-        rawLogs.forEach(log => {
+        rawLogs.forEach((log: any) => {
             if (!log.weight_kg) return; // Skip bodyweight sets for simple volume tracking
 
             const logDate = new Date(log.logged_at);
@@ -90,7 +90,7 @@ export default async function ProgressPage() {
     const exerciseMaxes = new Map<string, { weight: number, date: string }>();
 
     if (!prError && allLogsForPr) {
-        allLogsForPr.forEach(log => {
+        allLogsForPr.forEach((log: any) => {
             // @ts-ignore
             const exName = log.exercises?.name;
             if (!exName || !log.weight_kg) return;
@@ -124,13 +124,13 @@ export default async function ProgressPage() {
 
     return (
         <div className="max-w-5xl mx-auto space-y-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">Progress Tracking</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Progress Tracking</h1>
 
             {/* Volume Chart */}
-            <section className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <section className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
                 <div className="mb-4 text-center sm:text-left">
-                    <h2 className="text-xl font-bold text-gray-900">Total Volume Over Time</h2>
-                    <p className="text-sm text-gray-500 mt-1">Sum of sets × reps × weight (kg) for the last 8 weeks</p>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Total Volume Over Time</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Sum of sets × reps × weight (kg) for the last 8 weeks</p>
                 </div>
                 {(!rawLogs || rawLogs.length === 0) ? (
                     <div className="text-center py-12">
@@ -143,14 +143,14 @@ export default async function ProgressPage() {
                         <table className="min-w-full divide-y divide-gray-200 text-sm">
                             <thead>
                                 <tr>
-                                    <th className="px-4 py-2 text-left text-gray-500 font-medium">Week</th>
-                                    <th className="px-4 py-2 text-right text-gray-500 font-medium">Volume (kg)</th>
+                                    <th className="px-4 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Week</th>
+                                    <th className="px-4 py-2 text-right text-gray-500 dark:text-gray-400 font-medium">Volume (kg)</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                                 {volumeChartData.map((d, i) => (
-                                    <tr key={i}>
-                                        <td className="px-4 py-2 text-gray-900">{d.week}</td>
+                                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                        <td className="px-4 py-2 text-gray-900 dark:text-white">{d.week}</td>
                                         <td className="px-4 py-2 text-right font-medium text-blue-600">{d.volume.toLocaleString()}</td>
                                     </tr>
                                 ))}
@@ -162,33 +162,33 @@ export default async function ProgressPage() {
 
             <div className="grid md:grid-cols-2 gap-8">
                 {/* Personal Records */}
-                <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[500px]">
-                    <div className="p-6 border-b border-gray-100 bg-gray-50 shrink-0">
-                        <h2 className="text-xl font-bold text-gray-900">Personal Records</h2>
-                        <p className="text-sm text-gray-500 mt-1">Heaviest weight lifted per exercise</p>
+                <section className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col h-[500px]">
+                    <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 shrink-0">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Personal Records</h2>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Heaviest weight lifted per exercise</p>
                     </div>
 
                     <div className="overflow-y-auto flex-1 p-0">
                         {prTableData.length === 0 ? (
-                            <div className="p-8 text-center bg-white h-full flex flex-col items-center justify-center">
-                                <p className="text-gray-500 text-sm">No personal records established yet.</p>
-                                <p className="text-gray-400 text-xs mt-1">Log some weighted exercises to see them here.</p>
+                            <div className="p-8 text-center bg-white dark:bg-gray-800 h-full flex flex-col items-center justify-center">
+                                <p className="text-gray-500 dark:text-gray-400 text-sm">No personal records established yet.</p>
+                                <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Log some weighted exercises to see them here.</p>
                             </div>
                         ) : (
                             <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-white sticky top-0 z-10 shadow-sm">
+                                <thead className="bg-white dark:bg-gray-800 sticky top-0 z-10 shadow-sm">
                                     <tr>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exercise</th>
-                                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Best Weight</th>
-                                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Date Achieved</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Exercise</th>
+                                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Best Weight</th>
+                                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date Achieved</th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-white divide-y divide-gray-100">
+                                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
                                     {prTableData.map((pr, idx) => (
-                                        <tr key={idx} className="hover:bg-gray-50 transition">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{pr.name}</td>
+                                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{pr.name}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600 text-right">{pr.weight} kg</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
                                                 {new Date(pr.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
                                             </td>
                                         </tr>
@@ -200,34 +200,34 @@ export default async function ProgressPage() {
                 </section>
 
                 {/* Body Weight Trend */}
-                <section className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[500px]">
-                    <div className="p-6 border-b border-gray-100 bg-gray-50 shrink-0 flex justify-between items-center">
+                <section className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col h-[500px]">
+                    <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 shrink-0 flex justify-between items-center">
                         <div>
-                            <h2 className="text-xl font-bold text-gray-900">Bodyweight Trend</h2>
-                            <p className="text-sm text-gray-500 mt-1">Last 10 weigh-ins</p>
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Bodyweight Trend</h2>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Last 10 weigh-ins</p>
                         </div>
                     </div>
 
                     <div className="overflow-y-auto flex-1 p-0">
                         {!weightData || weightData.length === 0 ? (
-                            <div className="p-8 text-center bg-white h-full flex flex-col items-center justify-center">
-                                <p className="text-gray-500 text-sm">No weight data synced yet.</p>
+                            <div className="p-8 text-center bg-white dark:bg-gray-800 h-full flex flex-col items-center justify-center">
+                                <p className="text-gray-500 dark:text-gray-400 text-sm">No weight data synced yet.</p>
                             </div>
                         ) : (
-                            <ul className="divide-y divide-gray-100">
-                                {weightData.map((entry, idx) => (
-                                    <li key={idx} className="px-6 py-4 flex justify-between items-center hover:bg-gray-50 transition">
+                            <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+                                {weightData.map((entry: any, idx: number) => (
+                                    <li key={idx} className="px-6 py-4 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                                         <div className="flex items-center">
-                                            <div className="bg-blue-100 p-2 rounded-full mr-4">
-                                                <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <div className="bg-blue-100 dark:bg-blue-900/40 p-2 rounded-full mr-4">
+                                                <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
                                                 </svg>
                                             </div>
-                                            <span className="text-sm font-medium text-gray-900">
+                                            <span className="text-sm font-medium text-gray-900 dark:text-white">
                                                 {new Date(entry.recorded_at).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}
                                             </span>
                                         </div>
-                                        <span className="text-base font-bold text-gray-900">
+                                        <span className="text-base font-bold text-gray-900 dark:text-white">
                                             {entry.value} {entry.unit}
                                         </span>
                                     </li>

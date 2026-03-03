@@ -157,39 +157,12 @@ export default function AICoachPage() {
                         </div>
                     </div>
                 ) : (
-                    messages.map((msg) => (
-                        <div
-                            key={msg.id}
-                            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                        >
+                    <>
+                        {messages.map((msg) => (
                             <div
-                                className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-5 py-3 shadow-sm ${msg.role === "user"
-                                    ? "bg-indigo-600 text-white rounded-br-none"
-                                    : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-bl-none"
-                                    }`}
+                                key={msg.id}
+                                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                             >
-                                <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-                                    {msg.text}
-                                </div>
-
-                                {/* Embedded exercise cards if present */}
-                                {msg.exercises && msg.exercises.length > 0 && (
-                                    <div className="mt-4 flex flex-col gap-2">
-                                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
-                                            Recommended Exercises
-                                        </p>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            {msg.exercises.map((ex, i) => (
-                                                <div key={i} className="flex flex-col p-3 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600">
-                                                    <span className="font-medium text-sm text-gray-900 dark:text-white">{ex.name}</span>
-                                                    <span className="text-xs text-gray-500 dark:text-gray-300 mt-1 capitalize">
-                                                        {ex.muscle_group || "Various"} • {ex.difficulty || "Any"}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
                                 <div
                                     className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-5 py-3 shadow-sm ${msg.role === "user"
                                         ? "bg-indigo-600 text-white rounded-br-none"
@@ -222,23 +195,23 @@ export default function AICoachPage() {
                             </div>
                         ))}
 
-                            {/* Loading Indicator */}
-                            {sending && (
-                                <div className="flex justify-start">
-                                    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl rounded-bl-none px-5 py-4 shadow-sm">
-                                        <div className="flex items-center space-x-2">
-                                            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">AI is thinking</span>
-                                            <div className="flex space-x-1">
-                                                <div className="h-2 w-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                                                <div className="h-2 w-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                                                <div className="h-2 w-2 bg-indigo-400 rounded-full animate-bounce"></div>
-                                            </div>
+                        {/* Loading Indicator */}
+                        {sending && (
+                            <div className="flex justify-start">
+                                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl rounded-bl-none px-5 py-4 shadow-sm">
+                                    <div className="flex items-center space-x-2">
+                                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">AI is thinking...</span>
+                                        <div className="flex space-x-1">
+                                            <div className="h-2 w-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                                            <div className="h-2 w-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                                            <div className="h-2 w-2 bg-indigo-400 rounded-full animate-bounce"></div>
                                         </div>
                                     </div>
                                 </div>
-                            )}
-                        </>
-                    )}
+                            </div>
+                        )}
+                    </>
+                )}
                 <div ref={messagesEndRef} />
             </div>
 

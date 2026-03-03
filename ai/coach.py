@@ -28,6 +28,9 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
     raise RuntimeError("Missing Supabase credentials")
 
+if not OPENAI_API_KEY:
+    print("WARNING: OPENAI_API_KEY is missing. AI recommendations will return a fallback message.")
+
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
@@ -58,8 +61,11 @@ async def recommend(req: RecommendRequest):
             raise HTTPException(status_code=400, detail="No message provided")
 
         # 1. Fetch user profile
-        profile_res = supabase.table("profiles").select("display_name, fitness_goal, fitness_level").eq("user_id", req.user_id).single().execute()
-        profile = profile_res.data if profile_res.data else {}
+        try:
+            profile_res = supabase.table("profiles").select("display_name, fitness_goal, fitness_level").eq("user_id", req.user_id).single().execute()
+            profile = profile_res.data if profile_res.data else {}
+        except Exception:
+            profile = {}
         
         # 2. Fetch last 5 workout logs joined with exercise name
         logs_res = supabase.table("workout_logs").select(
@@ -131,29 +137,36 @@ async def recommend(req: RecommendRequest):
                 "exercises": matched_exercises
             }
 
-        async with httpx.AsyncClient() as client:
-            ai_res = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {OPENAI_API_KEY}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "gpt-4o-mini",
-                    "messages": openai_messages,
-                    "max_tokens": 200,
-                    "temperature": 0.7
-                },
-                timeout=30.0
-            )
-            ai_res.raise_for_status()
-            ai_data = ai_res.json()
-            reply_text = ai_data["choices"][0]["message"]["content"]
+        try:
+            async with httpx.AsyncClient() as client:
+                ai_res = await client.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {OPENAI_API_KEY}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": "gpt-4o-mini",
+                        "messages": openai_messages,
+                        "max_tokens": 200,
+                        "temperature": 0.7
+                    },
+                    timeout=30.0
+                )
+                ai_res.raise_for_status()
+                ai_data = ai_res.json()
+                reply_text = ai_data["choices"][0]["message"]["content"]
 
-        return {
-            "reply": reply_text,
-            "exercises": matched_exercises
-        }
+            return {
+                "reply": reply_text,
+                "exercises": matched_exercises
+            }
+        except Exception as e:
+            print("OpenAI API error:", str(e))
+            return {
+                "reply": "I'm having trouble reaching my AI backend right now. Please try again in a moment.",
+                "exercises": matched_exercises
+            }
         
     except Exception as e:
         print("Error processing AI recommendation:", str(e))
