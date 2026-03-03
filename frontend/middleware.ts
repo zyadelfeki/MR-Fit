@@ -27,15 +27,40 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user && request.nextUrl.pathname.startsWith("/dashboard")) {
+  const isDashboard = request.nextUrl.pathname.startsWith("/dashboard");
+  const isOnboarding = request.nextUrl.pathname.startsWith("/onboarding");
+  const isAuthCallback = request.nextUrl.pathname.startsWith("/auth");
+
+  // Keep existing dashboard protection
+  if (!user && isDashboard) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
+  }
+
+  // Protect onboarding so unauthenticated users can't see it
+  if (!user && isOnboarding) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  // If user IS authenticated, check if they need onboarding
+  if (user && !isAuthCallback) {
+    const { data: profile } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
+
+    if (!profile && !isOnboarding) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding";
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 };

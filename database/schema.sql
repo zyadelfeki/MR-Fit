@@ -86,8 +86,7 @@ create trigger trg_exercises_updated_at
   for each row execute function set_updated_at();
 
 create index if not exists idx_exercises_embedding
-  on exercises using ivfflat (embedding vector_cosine_ops)
-  with (lists = 100);
+  on exercises using hnsw (embedding vector_cosine_ops);
 
 -- =============================================================================
 -- Table: workouts
