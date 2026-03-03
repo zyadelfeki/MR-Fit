@@ -1,0 +1,116 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { createClient } from "../../lib/supabase/client";
+
+const navLinks = [
+    { name: "Dashboard", href: "/dashboard" },
+    { name: "Workouts", href: "/dashboard/workouts" },
+    { name: "Progress", href: "/dashboard/progress" },
+    { name: "AI Coach", href: "/dashboard/ai-coach" },
+    { name: "Nutrition", href: "/dashboard/nutrition" },
+    { name: "Profile", href: "/dashboard/profile" },
+];
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+    const pathname = usePathname();
+    const router = useRouter();
+    const supabase = createClient();
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [userEmail, setUserEmail] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                setUserEmail(user.email ?? null);
+            }
+        };
+        fetchUser();
+    }, [supabase]);
+
+    const handleSignOut = async () => {
+        await supabase.auth.signOut();
+        router.push("/login");
+    };
+
+    return (
+        <div className="flex h-screen bg-gray-50">
+            {/* Mobile Sidebar Overlay */}
+            {isMobileMenuOpen && (
+                <div
+                    className="fixed inset-0 z-20 bg-black bg-opacity-50 md:hidden"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
+            )}
+
+            {/* Sidebar */}
+            <div className={`fixed inset-y-0 left-0 z-30 w-64 bg-white border-r transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                <div className="flex flex-col h-full">
+                    {/* Logo/Brand */}
+                    <div className="flex items-center justify-center h-16 border-b px-4">
+                        <span className="text-xl font-bold text-blue-600">MR-Fit</span>
+                    </div>
+
+                    {/* Nav Links */}
+                    <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+                        {navLinks.map((link) => {
+                            const isActive = pathname === link.href;
+                            return (
+                                <Link
+                                    key={link.name}
+                                    href={link.href}
+                                    className={`block px-4 py-3 rounded-md transition-colors ${isActive
+                                            ? "bg-blue-50 text-blue-700 font-semibold"
+                                            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                                        }`}
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                >
+                                    {link.name}
+                                </Link>
+                            );
+                        })}
+                    </nav>
+
+                    {/* User Info & Sign Out */}
+                    <div className="p-4 border-t">
+                        {userEmail && (
+                            <div className="mb-4 text-sm text-gray-600 truncate px-2">
+                                {userEmail}
+                            </div>
+                        )}
+                        <button
+                            onClick={handleSignOut}
+                            className="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition"
+                        >
+                            Sign Out
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Mobile Header / Hamburger */}
+                <header className="flex items-center justify-between h-16 px-4 bg-white border-b md:hidden">
+                    <span className="text-xl font-bold text-blue-600">MR-Fit</span>
+                    <button
+                        onClick={() => setIsMobileMenuOpen(true)}
+                        className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                    >
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </header>
+
+                {/* Main Content */}
+                <main className="flex-1 overflow-y-auto p-4 md:p-8">
+                    {children}
+                </main>
+            </div>
+        </div>
+    );
+}

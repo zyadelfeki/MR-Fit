@@ -75,7 +75,7 @@ export default function OnboardingPage() {
             const { error: insertError } = await supabase
                 .from("profiles")
                 .insert({
-                    id: user.id,
+                    user_id: user.id,
                     display_name: formData.display_name,
                     date_of_birth: formData.date_of_birth,
                     gender: formData.gender,
