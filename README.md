@@ -38,13 +38,13 @@ User → Next.js Frontend → Supabase (Auth + DB)
 
 ## Features
 
-- 🔐 Secure authentication flow via Supabase
-- 📊 Personalized user profiles with fitness goals and levels
-- 🏋️‍♂️ Comprehensive workout logging with sets, reps, and weights tracker
-- 🥗 Daily nutrition tracking with macros and calorie counting
-- 🤖 AI Coach powered by OpenAI and RAG for tailored advice
-- 🔍 Semantic similarity search for exercises using pgvector
-- 📱 Fully responsive, modern UI built with Tailwind CSS
+- Secure authentication flow via Supabase
+- Personalized user profiles with fitness goals and levels
+- Comprehensive workout logging with sets, reps, and weights tracker
+- Daily nutrition tracking with macros and calorie counting
+- AI Coach powered by OpenAI and RAG for tailored advice
+- Semantic similarity search for exercises using pgvector
+- Fully responsive, modern UI built with Tailwind CSS
 
 ## Database Schema
 
