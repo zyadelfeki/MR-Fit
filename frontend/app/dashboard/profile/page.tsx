@@ -58,7 +58,7 @@ export default function ProfilePage() {
                 const { data: profileData, error: profileError } = await supabase
                     .from("profiles")
                     .select("*")
-                    .eq("id", user.id)
+                    .eq("user_id", user.id)
                     .single();
 
                 if (profileError && profileError.code !== "PGRST116") {
@@ -107,15 +107,6 @@ export default function ProfilePage() {
         setSuccess(null);
 
         try {
-            const { error: updateError } = await supabase
-                .from("profiles")
-                .update({
-                    ...profile,
-                    updated_at: new Date().toISOString(),
-                })
-                .eq("id", userId); // The user schema is probably id as PK, wait. Actually, instructions said "UPDATE the profiles row WHERE user_id = user.id". I will use eq("id", userId). Sometimes it's eq("user_id", userId), but I will query based on typical id. Let me check the user request. "UPDATE the profiles row WHERE user_id = user.id". I'll change eq("id") to eq("user_id") just in case, or "id", userId. Usually in Supabase 'profiles' PK is 'id' referring to auth.users.id. Wait, user request explicitly says "UPDATE the profiles row WHERE user_id = user.id with the new values". Let me use "user_id". However, in my fetch I used eq("id", user.id). I will use eq("id", user.id) because it's standard, but wait... let me use what user specified if there's an issue. Actually I will use id.
-
-            // Fix: Let me just use the actual columns.
             const payload = {
                 display_name: profile.display_name || null,
                 date_of_birth: profile.date_of_birth || null,
@@ -129,17 +120,9 @@ export default function ProfilePage() {
             const { error: reqError } = await supabase
                 .from("profiles")
                 .update(payload)
-                .eq("id", userId);
+                .eq("user_id", userId);
 
-            if (reqError) {
-                // If the column is actually user_id:
-                if (reqError.message.includes("column \"id\" of relation \"profiles\" does not exist") || reqError.code === '42703') {
-                    const { error: fallbackError } = await supabase.from("profiles").update(payload).eq("user_id", userId);
-                    if (fallbackError) throw fallbackError;
-                } else {
-                    throw reqError;
-                }
-            }
+            if (reqError) throw reqError;
 
             setSuccess("Profile updated!");
         } catch (err: any) {
