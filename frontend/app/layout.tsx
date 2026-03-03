@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SessionProvider } from "next-auth/react";
 
 export const metadata: Metadata = {
   title: { default: "MR-Fit", template: "%s | MR-Fit" },
-  description: "AI-powered fitness companion — workouts, nutrition, and personalized coaching",
+  description:
+    "AI-powered fitness companion — workouts, nutrition, and personalized coaching",
 };
 
 export default function RootLayout({
@@ -14,7 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-white text-gray-900 antialiased">
-        {children}
+        <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
   );

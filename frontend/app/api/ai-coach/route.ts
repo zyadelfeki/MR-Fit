@@ -1,15 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
+import pool from "@/lib/db";
 
 export async function POST(req: Request) {
     try {
-        const supabase = await createClient();
-        const {
-            data: { user },
-            error: authError,
-        } = await supabase.auth.getUser();
-
-        if (authError || !user) {
+        const session = await auth();
+        if (!session?.user?.id) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -28,11 +24,9 @@ export async function POST(req: Request) {
 
         const response = await fetch(`${fastApiUrl}/recommend`, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                user_id: user.id,
+                user_id: session.user.id,
                 message: message,
                 messages: messages || [],
             }),
@@ -51,9 +45,6 @@ export async function POST(req: Request) {
         return NextResponse.json(data);
     } catch (error: any) {
         console.error("AI Coach Route Error:", error);
-        return NextResponse.json(
-            { error: "Internal Server Error" },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

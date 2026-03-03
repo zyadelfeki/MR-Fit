@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useState, useEffect, useRef } from "react";
 
 type Exercise = {
     id?: string;
@@ -25,7 +24,6 @@ export default function AICoachPage() {
     const [sending, setSending] = useState(false);
     const [userName, setUserName] = useState<string>("there");
 
-    const supabase = useMemo(() => createClient(), []);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -39,29 +37,24 @@ export default function AICoachPage() {
     useEffect(() => {
         async function initChat() {
             try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (user) {
-                    const { data: profile } = await supabase
-                        .from("profiles")
-                        .select("display_name")
-                        .eq("user_id", user.id)
-                        .single();
-
-                    if (profile?.display_name) {
-                        setUserName(profile.display_name);
+                const res = await fetch("/api/profile");
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.profile?.display_name) {
+                        setUserName(data.profile.display_name);
                     }
                 }
-            } catch (err) {
-                console.error("Failed to load user profile:", err);
+            } catch {
+                // silently ignore — welcome message still works without a name
             } finally {
                 setLoading(false);
             }
         }
 
         initChat();
-    }, [supabase]);
+    }, []);
 
-    // Set initial welcome message once userName is loaded
+    // Set initial welcome message once name is loaded
     useEffect(() => {
         if (!loading && messages.length === 0) {
             setMessages([
@@ -91,19 +84,17 @@ export default function AICoachPage() {
         setSending(true);
 
         try {
-            const messagesToSend = [...messages, newUserMsg].map(m => ({
+            const messagesToSend = [...messages, newUserMsg].map((m) => ({
                 role: m.role === "ai" ? "assistant" : "user",
-                content: m.text
+                content: m.text,
             }));
 
             const res = await fetch("/api/ai-coach", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     message: userMessageText,
-                    messages: messagesToSend
+                    messages: messagesToSend,
                 }),
             });
 
@@ -121,13 +112,11 @@ export default function AICoachPage() {
             };
 
             setMessages((prev) => [...prev, newAiMsg]);
-
-        } catch (error) {
-            console.error("Chat error:", error);
+        } catch {
             const errorMsg: Message = {
                 id: (Date.now() + 1).toString(),
                 role: "ai",
-                text: "I'm having trouble connecting right now. Please try again later.",
+                text: "I'm having trouble connecting right now. Make sure Ollama is running: ollama serve",
             };
             setMessages((prev) => [...prev, errorMsg]);
         } finally {
@@ -137,13 +126,14 @@ export default function AICoachPage() {
 
     return (
         <div className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto bg-gray-50 dark:bg-gray-900 border-x border-gray-200 dark:border-gray-800">
-
             {/* Header */}
             <div className="bg-white dark:bg-gray-800 px-6 py-4 border-b border-gray-200 dark:border-gray-700 shadow-sm z-10">
                 <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                     <span className="text-2xl">🤖</span> AI Coach
                 </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Your personalized fitness assistant</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Powered by Ollama (local LLM) — your personalized fitness assistant
+                </p>
             </div>
 
             {/* Chat Area */}
@@ -151,9 +141,9 @@ export default function AICoachPage() {
                 {loading ? (
                     <div className="flex justify-center items-center h-full">
                         <div className="animate-pulse flex space-x-2">
-                            <div className="h-3 w-3 bg-indigo-400 rounded-full"></div>
-                            <div className="h-3 w-3 bg-indigo-400 rounded-full"></div>
-                            <div className="h-3 w-3 bg-indigo-400 rounded-full"></div>
+                            <div className="h-3 w-3 bg-indigo-400 rounded-full" />
+                            <div className="h-3 w-3 bg-indigo-400 rounded-full" />
+                            <div className="h-3 w-3 bg-indigo-400 rounded-full" />
                         </div>
                     </div>
                 ) : (
@@ -165,15 +155,14 @@ export default function AICoachPage() {
                             >
                                 <div
                                     className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-5 py-3 shadow-sm ${msg.role === "user"
-                                        ? "bg-indigo-600 text-white rounded-br-none"
-                                        : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-bl-none"
+                                            ? "bg-indigo-600 text-white rounded-br-none"
+                                            : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-bl-none"
                                         }`}
                                 >
                                     <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
                                         {msg.text}
                                     </div>
 
-                                    {/* Embedded exercise cards if present */}
                                     {msg.exercises && msg.exercises.length > 0 && (
                                         <div className="mt-4 flex flex-col gap-2">
                                             <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
@@ -181,10 +170,16 @@ export default function AICoachPage() {
                                             </p>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 {msg.exercises.map((ex, i) => (
-                                                    <div key={i} className="flex flex-col p-3 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600">
-                                                        <span className="font-medium text-sm text-gray-900 dark:text-white">{ex.name}</span>
+                                                    <div
+                                                        key={i}
+                                                        className="flex flex-col p-3 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600"
+                                                    >
+                                                        <span className="font-medium text-sm text-gray-900 dark:text-white">
+                                                            {ex.name}
+                                                        </span>
                                                         <span className="text-xs text-gray-500 dark:text-gray-300 mt-1 capitalize">
-                                                            {ex.muscle_group || "Various"} • {ex.difficulty || "Any"}
+                                                            {ex.muscle_group || "Various"} •{" "}
+                                                            {ex.difficulty || "Any"}
                                                         </span>
                                                     </div>
                                                 ))}
@@ -195,16 +190,18 @@ export default function AICoachPage() {
                             </div>
                         ))}
 
-                        {/* Loading Indicator */}
+                        {/* Loading indicator */}
                         {sending && (
                             <div className="flex justify-start">
                                 <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl rounded-bl-none px-5 py-4 shadow-sm">
                                     <div className="flex items-center space-x-2">
-                                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">AI is thinking...</span>
+                                        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                            AI is thinking...
+                                        </span>
                                         <div className="flex space-x-1">
-                                            <div className="h-2 w-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                                            <div className="h-2 w-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                                            <div className="h-2 w-2 bg-indigo-400 rounded-full animate-bounce"></div>
+                                            <div className="h-2 w-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                                            <div className="h-2 w-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                                            <div className="h-2 w-2 bg-indigo-400 rounded-full animate-bounce" />
                                         </div>
                                     </div>
                                 </div>
@@ -222,11 +219,12 @@ export default function AICoachPage() {
                         value={input}
                         onChange={(e) => {
                             setInput(e.target.value);
-                            e.target.style.height = 'auto';
-                            e.target.style.height = Math.min(e.target.scrollHeight, 100) + 'px';
+                            e.target.style.height = "auto";
+                            e.target.style.height =
+                                Math.min(e.target.scrollHeight, 100) + "px";
                         }}
                         onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
+                            if (e.key === "Enter" && !e.shiftKey) {
                                 e.preventDefault();
                                 handleSubmit(e as unknown as React.FormEvent);
                             }
@@ -241,14 +239,18 @@ export default function AICoachPage() {
                         disabled={!input.trim() || sending || loading}
                         className="inline-flex items-center justify-center rounded-full bg-indigo-600 px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 -ml-1 mr-1 sm:mr-0">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            className="w-5 h-5 -ml-1 mr-1 sm:mr-0"
+                        >
                             <path d="M3.478 2.404a.75.75 0 00-.926.941l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.404z" />
                         </svg>
                         <span className="hidden sm:inline">Send</span>
                     </button>
                 </form>
             </div>
-
         </div>
     );
 }

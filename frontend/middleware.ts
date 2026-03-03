@@ -1,66 +1,35 @@
-import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import { auth } from "@/auth";
+import { NextResponse } from "next/server";
 
-export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+export default auth((req) => {
+  const { nextUrl } = req;
+  const session = req.auth;
+  const isLoggedIn = !!session;
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet: any[]) {
-          cookiesToSet.forEach(({ name, value, options }: any) =>
-            request.cookies.set({ name, value, ...options })
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }: any) =>
-            supabaseResponse.cookies.set({ name, value, ...options })
-          );
-        },
-      },
-    }
-  );
+  const isAuthPage =
+    nextUrl.pathname.startsWith("/login") ||
+    nextUrl.pathname.startsWith("/signup");
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const isProtected =
+    nextUrl.pathname.startsWith("/dashboard") ||
+    nextUrl.pathname.startsWith("/onboarding");
 
-  const isDashboard = request.nextUrl.pathname.startsWith("/dashboard");
-  const isOnboarding = request.nextUrl.pathname.startsWith("/onboarding");
-  const isAuthCallback = request.nextUrl.pathname.startsWith("/auth");
-
-  // Keep existing dashboard protection
-  if (!user && isDashboard) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+  // Redirect unauthenticated users away from protected pages
+  if (!isLoggedIn && isProtected) {
+    return NextResponse.redirect(new URL("/login", nextUrl));
   }
 
-  // Protect onboarding so unauthenticated users can't see it
-  if (!user && isOnboarding) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+  // Redirect logged-in users away from auth pages
+  if (isLoggedIn && isAuthPage) {
+    return NextResponse.redirect(new URL("/dashboard", nextUrl));
   }
 
-  // If user IS authenticated, check if they need onboarding
-  if (user && !isAuthCallback) {
-    const { data: profile } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
-
-    if (!profile && !isOnboarding) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/onboarding";
-      return NextResponse.redirect(url);
-    }
-  }
-
-  return supabaseResponse;
-}
+  return NextResponse.next();
+});
 
 export const config = {
+  // Exclude /api/auth, static files, and favicon from middleware
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

@@ -1,9 +1,11 @@
 import os
+import json
+import psycopg2
+import psycopg2.extras
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
-from supabase import create_client, Client
 from sentence_transformers import SentenceTransformer
 import httpx
 from dotenv import load_dotenv
@@ -12,7 +14,6 @@ load_dotenv()
 
 app = FastAPI()
 
-# Enable CORS for localhost:3000
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -21,18 +22,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+DATABASE_URL = os.environ.get("DATABASE_URL")  # postgresql://user:pass@localhost:5432/mrfit
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma3")
 
-if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
-    raise RuntimeError("Missing Supabase credentials")
+if not DATABASE_URL:
+    raise RuntimeError("Missing DATABASE_URL in environment")
 
-if not OPENAI_API_KEY:
-    print("WARNING: OPENAI_API_KEY is missing. AI recommendations will return a fallback message.")
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 model = SentenceTransformer("all-MiniLM-L6-v2")
+
+def get_db():
+    return psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+
+SYSTEM_PROMPT = """You are MR-Fit AI Coach. You give personalized, specific workout and exercise recommendations.
+Keep responses concise (under 150 words). Always be encouraging. Use the user context provided."""
 
 class ChatMessage(BaseModel):
     role: str
@@ -45,129 +48,131 @@ class RecommendRequest(BaseModel):
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    return {"status": "ok", "ollama": OLLAMA_URL, "model": OLLAMA_MODEL}
 
 @app.post("/recommend")
 async def recommend(req: RecommendRequest):
+    user_message_text = req.message
+    if not user_message_text and req.messages:
+        for m in reversed(req.messages):
+            if m.role == "user":
+                user_message_text = m.content
+                break
+
+    if not user_message_text:
+        raise HTTPException(status_code=400, detail="No message provided")
+
+    db = None
     try:
-        user_message_text = req.message
-        if not user_message_text and req.messages:
-            for m in reversed(req.messages):
-                if m.role == "user":
-                    user_message_text = m.content
-                    break
-                    
-        if not user_message_text:
-            raise HTTPException(status_code=400, detail="No message provided")
+        db = get_db()
+        cur = db.cursor()
 
         # 1. Fetch user profile
-        try:
-            profile_res = supabase.table("profiles").select("display_name, fitness_goal, fitness_level").eq("user_id", req.user_id).single().execute()
-            profile = profile_res.data if profile_res.data else {}
-        except Exception:
-            profile = {}
-        
+        cur.execute(
+            "SELECT display_name, fitness_goal, fitness_level, weight_kg FROM profiles WHERE user_id = %s",
+            (req.user_id,)
+        )
+        row = cur.fetchone()
+        profile = dict(row) if row else {}
+
         # 2. Fetch last 5 workout logs joined with exercise name
-        logs_res = supabase.table("workout_logs").select(
-            "sets_completed, reps_completed, weight_kg, logged_at, exercises(name)"
-        ).eq("user_id", req.user_id).order("logged_at", desc=True).limit(5).execute()
-        
-        logs_data = logs_res.data or []
-        
-        if logs_data:
+        cur.execute("""
+            SELECT wl.sets_completed, wl.reps_completed, wl.weight_kg, wl.logged_at, e.name as exercise_name
+            FROM workout_logs wl
+            LEFT JOIN exercises e ON wl.exercise_id = e.id
+            WHERE wl.user_id = %s
+            ORDER BY wl.logged_at DESC
+            LIMIT 5
+        """, (req.user_id,))
+        logs = cur.fetchall()
+
+        if logs:
             recent_workouts_str = "Recent Workouts:\n" + "\n".join([
-                f"- {log.get('exercises', {}).get('name', 'Unknown')}: "
-                f"{log.get('sets_completed')}x{log.get('reps_completed')} "
-                f"@ {log.get('weight_kg', 'bodyweight')}kg"
-                for log in logs_data
+                f"- {log['exercise_name'] or 'Unknown'}: "
+                f"{log['sets_completed']}x{log['reps_completed']} "
+                f"@ {log['weight_kg'] or 'bodyweight'}kg"
+                for log in logs
             ])
         else:
             recent_workouts_str = "No recent workouts found."
 
-        # 3. Embed message
+        # 3. Embed the user message
         query_embedding = model.encode(user_message_text).tolist()
+        embedding_str = "[" + ",".join(map(str, query_embedding)) + "]"
 
-        # 4. Perform vector similarity search
-        rpc_res = supabase.rpc("match_exercises", {
-            "query_embedding": query_embedding,
-            "match_count": 5
-        }).execute()
-        
-        matched_exercises = rpc_res.data or []
+        # 4. pgvector similarity search
+        cur.execute("""
+            SELECT id, name, description, muscle_group, difficulty,
+                   embedding <=> %s::vector AS distance
+            FROM exercises
+            WHERE embedding IS NOT NULL
+            ORDER BY embedding <=> %s::vector
+            LIMIT 5
+        """, (embedding_str, embedding_str))
+        matched_exercises = [dict(row) for row in cur.fetchall()]
 
-        # 5. Build Context String
-        context_str = f"""
-        User Profile:
-        Name: {profile.get('display_name', 'User')}
-        Goal: {profile.get('fitness_goal', 'Not specified')}
-        Level: {profile.get('fitness_level', 'Not specified')}
-        
-        {recent_workouts_str}
+        # 5. Build context
+        exercises_text = "\n".join([
+            f"- {ex['name']} ({ex['muscle_group']}, {ex['difficulty']}): {ex.get('description', '')}"
+            for ex in matched_exercises
+        ])
 
-        Recommended Exercises based on message:
-        {matched_exercises}
-        
-        Recommended Exercises based on message:
-        {matched_exercises}
-        """
+        context_str = f"""User Profile:
+Name: {profile.get('display_name', 'User')}
+Goal: {profile.get('fitness_goal', 'Not specified')}
+Level: {profile.get('fitness_level', 'Not specified')}
+Current Weight: {profile.get('weight_kg', 'Unknown')}kg
 
-        openai_messages = [
-            {
-                "role": "system",
-                "content": "You are MR-Fit AI Coach. You give personalized, specific workout and exercise recommendations. Keep responses concise (under 150 words). Always be encouraging.\n\n" + context_str
-            }
+{recent_workouts_str}
+
+Relevant Exercises from database:
+{exercises_text}"""
+
+        # 6. Build messages for Ollama
+        ollama_messages = [
+            {"role": "system", "content": SYSTEM_PROMPT + "\n\n" + context_str}
         ]
 
         if req.messages:
             for m in req.messages:
-                # Ensure valid role for openai
-                role = "assistant" if m.role == "ai" or m.role == "assistant" else "user"
-                # Skip welcome message if it's the exact one we put
-                if role == "assistant" and "Hi" in m.content and "I'm your MR-Fit AI Coach" in m.content:
-                    continue
-                openai_messages.append({"role": role, "content": m.content})
+                role = "assistant" if m.role in ("ai", "assistant") else "user"
+                if role == "assistant" and "MR-Fit AI Coach" in m.content:
+                    continue  # skip welcome message
+                ollama_messages.append({"role": role, "content": m.content})
         else:
-            openai_messages.append({"role": "user", "content": user_message_text})
+            ollama_messages.append({"role": "user", "content": user_message_text})
 
-        # 6. Call OpenAI
-        if not OPENAI_API_KEY:
-            # Fallback if no openai key, return dummy response
-            return {
-                "reply": "I'm sorry, my AI backend is not configured with an OpenAI API key yet.",
-                "exercises": matched_exercises
-            }
-
+        # 7. Call Ollama
         try:
-            async with httpx.AsyncClient() as client:
-                ai_res = await client.post(
-                    "https://api.openai.com/v1/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {OPENAI_API_KEY}",
-                        "Content-Type": "application/json"
-                    },
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                res = await client.post(
+                    f"{OLLAMA_URL}/api/chat",
                     json={
-                        "model": "gpt-4o-mini",
-                        "messages": openai_messages,
-                        "max_tokens": 200,
-                        "temperature": 0.7
-                    },
-                    timeout=30.0
+                        "model": OLLAMA_MODEL,
+                        "messages": ollama_messages,
+                        "stream": False,
+                        "options": {
+                            "temperature": 0.7,
+                            "num_predict": 250
+                        }
+                    }
                 )
-                ai_res.raise_for_status()
-                ai_data = ai_res.json()
-                reply_text = ai_data["choices"][0]["message"]["content"]
-
-            return {
-                "reply": reply_text,
-                "exercises": matched_exercises
-            }
+                res.raise_for_status()
+                data = res.json()
+                reply_text = data["message"]["content"]
         except Exception as e:
-            print("OpenAI API error:", str(e))
-            return {
-                "reply": "I'm having trouble reaching my AI backend right now. Please try again in a moment.",
-                "exercises": matched_exercises
-            }
-        
+            print(f"Ollama error: {e}")
+            reply_text = "I'm having trouble reaching my local AI right now. Make sure Ollama is running with: ollama serve"
+
+        # Remove distance field from exercises before returning (not needed by frontend)
+        for ex in matched_exercises:
+            ex.pop("distance", None)
+
+        return {"reply": reply_text, "exercises": matched_exercises}
+
     except Exception as e:
-        print("Error processing AI recommendation:", str(e))
+        print(f"Error in recommend endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if db:
+            db.close()

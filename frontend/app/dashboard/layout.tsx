@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { createClient } from "../../lib/supabase/client";
+import { useSession, signOut } from "next-auth/react";
 
 const navLinks = [
     { name: "Dashboard", href: "/dashboard" },
@@ -14,31 +14,41 @@ const navLinks = [
     { name: "Profile", href: "/dashboard/profile" },
 ];
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
     const pathname = usePathname();
     const router = useRouter();
-    const supabase = useMemo(() => createClient(), []);
+    const { data: session } = useSession();
+
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [userEmail, setUserEmail] = useState<string | null>(null);
     const [displayName, setDisplayName] = useState<string | null>(null);
 
+    const userEmail = session?.user?.email ?? null;
+
     useEffect(() => {
-        const fetchUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                setUserEmail(user.email ?? null);
-                const { data } = await supabase.from("profiles").select("display_name").eq("user_id", user.id).single();
-                if (data) {
-                    setDisplayName(data.display_name);
+        async function fetchProfile() {
+            try {
+                const res = await fetch("/api/profile");
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.profile?.display_name) {
+                    setDisplayName(data.profile.display_name);
                 }
+            } catch {
+                // silently ignore — display name is non-critical
             }
-        };
-        fetchUser();
-    }, [supabase]);
+        }
+
+        if (session?.user?.id) {
+            fetchProfile();
+        }
+    }, [session?.user?.id]);
 
     const handleSignOut = async () => {
-        await supabase.auth.signOut();
-        router.push("/login");
+        await signOut({ callbackUrl: "/login" });
     };
 
     return (
@@ -52,7 +62,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
 
             {/* Sidebar */}
-            <div className={`fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <div
+                className={`fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+                    }`}
+            >
                 <div className="flex flex-col h-full">
                     {/* Logo/Brand */}
                     <div className="flex items-center justify-center h-16 border-b px-4">
@@ -68,8 +81,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     key={link.name}
                                     href={link.href}
                                     className={`block px-4 py-3 rounded-md transition-colors ${isActive
-                                        ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold"
-                                        : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-white"
+                                            ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold"
+                                            : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-white"
                                         }`}
                                     onClick={() => setIsMobileMenuOpen(false)}
                                 >
@@ -84,11 +97,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         {userEmail && (
                             <div className="flex items-center gap-3 mb-4 px-2">
                                 <div className="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                                    {displayName ? displayName[0].toUpperCase() : userEmail?.[0]?.toUpperCase() || "?"}
+                                    {displayName
+                                        ? displayName[0].toUpperCase()
+                                        : userEmail?.[0]?.toUpperCase() ?? "?"}
                                 </div>
                                 <div className="overflow-hidden">
-                                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{displayName || "User"}</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{userEmail}</p>
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                        {displayName || "User"}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                        {userEmail}
+                                    </p>
                                 </div>
                             </div>
                         )}
@@ -111,16 +130,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         onClick={() => setIsMobileMenuOpen(true)}
                         className="text-gray-500 hover:text-gray-700 focus:outline-none"
                     >
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                        <svg
+                            className="w-6 h-6"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 6h16M4 12h16M4 18h16"
+                            />
                         </svg>
                     </button>
                 </header>
 
                 {/* Main Content */}
-                <main className="flex-1 overflow-y-auto p-4 md:p-8">
-                    {children}
-                </main>
+                <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
             </div>
         </div>
     );

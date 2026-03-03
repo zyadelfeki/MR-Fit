@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "../../../lib/supabase/client";
+import { signIn } from "next-auth/react";
+import Link from "next/link";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -10,31 +11,54 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const supabase = useMemo(() => createClient(), []);
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSuccess(null);
 
     if (password !== confirm) {
       setError("Passwords do not match");
       return;
     }
 
-    const { error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    setLoading(true);
 
-    if (authError) {
-      setError(authError.message);
-    } else {
-      setSuccess("Check your email to confirm your account");
-      setEmail("");
-      setPassword("");
-      setConfirm("");
+    try {
+      // 1. Register the account
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Registration failed");
+        return;
+      }
+
+      // 2. Auto sign-in after successful registration
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setError("Account created! Please sign in.");
+        router.push("/login");
+        return;
+      }
+
+      // 3. Redirect to onboarding
+      router.refresh();
+      router.push("/onboarding");
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -49,7 +73,6 @@ export default function SignupPage() {
       </h1>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {success && <p className="text-sm text-green-600">{success}</p>}
 
       <div>
         <label className="block text-sm font-medium" htmlFor="email">
@@ -60,8 +83,9 @@ export default function SignupPage() {
           type="email"
           required
           value={email}
+          autoComplete="email"
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
         />
       </div>
 
@@ -73,9 +97,11 @@ export default function SignupPage() {
           id="password"
           type="password"
           required
+          minLength={6}
           value={password}
+          autoComplete="new-password"
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
         />
       </div>
 
@@ -87,18 +113,28 @@ export default function SignupPage() {
           id="confirm"
           type="password"
           required
+          minLength={6}
           value={confirm}
+          autoComplete="new-password"
           onChange={(e) => setConfirm(e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
         />
       </div>
 
       <button
         type="submit"
-        className="w-full rounded-md bg-brand-600 py-2 px-4 text-white hover:bg-brand-700"
+        disabled={loading}
+        className="w-full rounded-md bg-indigo-600 py-2 px-4 text-white hover:bg-indigo-700 disabled:opacity-50 transition"
       >
-        Sign up
+        {loading ? "Creating account..." : "Sign up"}
       </button>
+
+      <p className="text-sm text-center text-gray-600 dark:text-gray-400">
+        Already have an account?{" "}
+        <Link href="/login" className="text-indigo-600 hover:underline">
+          Sign in
+        </Link>
+      </p>
     </form>
   );
 }
