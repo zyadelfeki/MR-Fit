@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createBrowserClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 
 type NutritionLog = {
     id: string;
@@ -15,7 +15,7 @@ type NutritionLog = {
 };
 
 export default function NutritionPage() {
-    const [supabase] = useState(() => createBrowserClient());
+    const supabase = createClient();
     const [logs, setLogs] = useState<NutritionLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
