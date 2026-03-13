@@ -10,16 +10,13 @@ export async function GET() {
     }
 
     try {
-        const todayStr = new Date().toISOString().split("T")[0];
-
         const res = await pool.query(
             `SELECT id, food_name, calories, protein_g, carbs_g, fat_g, logged_at
        FROM nutrition_logs
        WHERE user_id = $1
-         AND logged_at >= $2
-         AND logged_at < $3
+                 AND DATE(logged_at AT TIME ZONE 'UTC') = CURRENT_DATE
        ORDER BY logged_at DESC`,
-            [session.user.id, `${todayStr}T00:00:00`, `${todayStr}T23:59:59`]
+                        [session.user.id]
         );
 
         return NextResponse.json({ logs: res.rows });

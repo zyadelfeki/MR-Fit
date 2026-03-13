@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { showToast } from "@/lib/toast";
 
 export default function NewWorkoutPage() {
     const router = useRouter();
@@ -39,10 +40,12 @@ export default function NewWorkoutPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Failed to create workout");
 
+            showToast("💪 Workout logged!", "success");
             router.push("/dashboard/workouts");
             router.refresh();
         } catch (err: any) {
             setError(err.message || "Failed to create workout.");
+            showToast("❌ Something went wrong. Please try again.", "error");
             setLoading(false);
         }
     };

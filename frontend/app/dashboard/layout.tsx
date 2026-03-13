@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import Toast from "@/components/Toast";
 
 const navLinks = [
     { name: "Dashboard", href: "/dashboard" },
     { name: "Workouts", href: "/dashboard/workouts" },
-    { name: "🏋️ Exercises", href: "/exercises" },
+    { name: "🏋️ Exercises", href: "/dashboard/exercises" },
     { name: "Progress", href: "/dashboard/progress" },
     { name: "AI Coach", href: "/dashboard/ai-coach" },
     { name: "Nutrition", href: "/dashboard/nutrition" },
@@ -21,13 +22,47 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     const pathname = usePathname();
-    const router = useRouter();
     const { data: session } = useSession();
 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [displayName, setDisplayName] = useState<string | null>(null);
+    const [theme, setTheme] = useState<"light" | "dark">("light");
+    const [routeBarVisible, setRouteBarVisible] = useState(false);
+    const [routeBarPhase, setRouteBarPhase] = useState<"idle" | "loading" | "finishing">("idle");
 
     const userEmail = session?.user?.email ?? null;
+
+    useEffect(() => {
+        setIsMobileMenuOpen(false);
+    }, [pathname]);
+
+    useEffect(() => {
+        const storedTheme = typeof window !== "undefined" ? localStorage.getItem("theme") : null;
+        const prefersDark = typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const resolvedTheme = storedTheme === "dark" || (!storedTheme && prefersDark) ? "dark" : "light";
+
+        setTheme(resolvedTheme);
+        document.documentElement.classList.toggle("dark", resolvedTheme === "dark");
+    }, []);
+
+    useEffect(() => {
+        setRouteBarVisible(true);
+        setRouteBarPhase("loading");
+
+        const finishTimer = setTimeout(() => {
+            setRouteBarPhase("finishing");
+        }, 180);
+
+        const hideTimer = setTimeout(() => {
+            setRouteBarVisible(false);
+            setRouteBarPhase("idle");
+        }, 500);
+
+        return () => {
+            clearTimeout(finishTimer);
+            clearTimeout(hideTimer);
+        };
+    }, [pathname]);
 
     useEffect(() => {
         async function fetchProfile() {
@@ -52,8 +87,29 @@ export default function DashboardLayout({
         await signOut({ callbackUrl: "/login" });
     };
 
+    const toggleTheme = () => {
+        const nextTheme = theme === "dark" ? "light" : "dark";
+        setTheme(nextTheme);
+        document.documentElement.classList.toggle("dark", nextTheme === "dark");
+        localStorage.setItem("theme", nextTheme);
+    };
+
     return (
-        <div className="flex h-screen bg-gray-50">
+        <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+            <div
+                className={`fixed left-0 top-0 z-50 h-1 w-full transition-opacity duration-200 ${routeBarVisible ? "opacity-100" : "opacity-0"
+                    }`}
+            >
+                <div
+                    className={`h-full bg-indigo-500 transition-all duration-300 ${routeBarPhase === "idle"
+                            ? "w-0"
+                            : routeBarPhase === "loading"
+                                ? "w-2/3"
+                                : "w-full"
+                        }`}
+                />
+            </div>
+
             {/* Mobile Sidebar Overlay */}
             {isMobileMenuOpen && (
                 <div
@@ -76,7 +132,7 @@ export default function DashboardLayout({
                     {/* Nav Links */}
                     <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
                         {navLinks.map((link) => {
-                            const isActive = pathname === link.href;
+                            const isActive = pathname.startsWith(link.href) && (link.href !== "/dashboard" || pathname === "/dashboard");
                             return (
                                 <Link
                                     key={link.name}
@@ -95,6 +151,14 @@ export default function DashboardLayout({
 
                     {/* User Info & Sign Out */}
                     <div className="p-4 border-t dark:border-gray-700">
+                        <button
+                            type="button"
+                            onClick={toggleTheme}
+                            className="mb-4 flex w-full items-center justify-center rounded-md border border-gray-300 bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                        >
+                            {theme === "dark" ? "☀️ Light Mode" : "🌙 Dark Mode"}
+                        </button>
+
                         {userEmail && (
                             <div className="flex items-center gap-3 mb-4 px-2">
                                 <div className="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
@@ -150,6 +214,8 @@ export default function DashboardLayout({
                 {/* Main Content */}
                 <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
             </div>
+
+            <Toast />
         </div>
     );
 }

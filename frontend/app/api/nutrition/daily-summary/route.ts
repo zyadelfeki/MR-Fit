@@ -36,7 +36,7 @@ export async function GET() {
                 COALESCE(SUM(fat_g), 0) AS fat
              FROM nutrition_logs
              WHERE user_id = $1
-               AND DATE(logged_at) = CURRENT_DATE`,
+                             AND DATE(logged_at AT TIME ZONE 'UTC') = CURRENT_DATE`,
             [session.user.id]
         );
 

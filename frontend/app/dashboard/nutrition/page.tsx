@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { showToast } from "@/lib/toast";
 
 type NutritionLog = {
     id: string;
@@ -201,9 +202,11 @@ export default function NutritionPage() {
             setLoggedDate(new Date().toISOString().split("T")[0]);
 
             await refreshNutritionData();
+            showToast("✅ Food logged successfully", "success");
         } catch (err) {
             const message = err instanceof Error ? err.message : "Failed to add food log.";
             setError(message);
+            showToast("❌ Something went wrong. Please try again.", "error");
         } finally {
             setSubmitting(false);
         }
@@ -218,9 +221,11 @@ export default function NutritionPage() {
                 throw new Error(data.error || "Failed to delete log");
             }
             await refreshNutritionData();
+            showToast("🗑 Entry removed", "info");
         } catch (err) {
             const message = err instanceof Error ? err.message : "Failed to delete log.";
             setError(message);
+            showToast("❌ Something went wrong. Please try again.", "error");
         }
     };
 
@@ -293,7 +298,7 @@ export default function NutritionPage() {
             )}
 
             {/* Log Food Form */}
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm">
+            <div id="log-food-card" className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm">
                 <h2 className="text-xl font-semibold mb-4">Log Food</h2>
 
                 <div className="mb-5 relative">
@@ -453,8 +458,15 @@ export default function NutritionPage() {
                             Loading today&apos;s logs...
                         </div>
                     ) : recentLogs.length === 0 ? (
-                        <div className="p-6 text-center text-zinc-500">
-                            No food logged today.
+                        <div className="p-6 text-center text-zinc-500 space-y-2">
+                            <p className="text-2xl">🍽️</p>
+                            <p>No food logged today.</p>
+                            <a
+                                href="#log-food-card"
+                                className="inline-flex rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-700"
+                            >
+                                Log your first meal
+                            </a>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">

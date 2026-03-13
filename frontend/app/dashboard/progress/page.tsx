@@ -1,28 +1,64 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import pool from "@/lib/db";
-import dynamic from "next/dynamic";
-import WeightTracker from "@/components/WeightTracker";
+import LogWeightForm from "@/components/LogWeightForm";
 
 export const metadata = {
     title: "Progress | MR-Fit",
     description: "Track your fitness progress over time",
 };
 
-const VolumeChart: React.ComponentType<{ data: { week: string; volume: number }[] }> = dynamic(
-    () => import("@/components/VolumeChart"),
-    {
-        ssr: false,
-        loading: () => <div className="h-48 animate-pulse bg-gray-100 rounded-lg" />,
-    }
-) as any;
+type WeightLog = {
+    logged_at: string;
+    weight_kg: string;
+};
 
-// Helper to get week number
-function getWeekNumber(d: Date) {
-    const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    dt.setUTCDate(dt.getUTCDate() + 4 - (dt.getUTCDay() || 7));
-    const yearStart = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
-    return Math.ceil((((dt.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+type WorkoutHeatmapRow = {
+    day: string;
+    count: string;
+};
+
+type PersonalRecord = {
+    exercise_name: string;
+    max_weight: string;
+    max_reps: string;
+    achieved_at: string;
+};
+
+function toIsoDate(date: Date): string {
+    return date.toISOString().split("T")[0];
+}
+
+function buildWeightChartPoints(entries: Array<{ date: string; weight: number }>) {
+    const width = 760;
+    const height = 220;
+    const padding = 24;
+
+    if (entries.length < 2) {
+        return { width, height, points: "", minY: 0, maxY: 0 };
+    }
+
+    const weights = entries.map((entry) => entry.weight);
+    const minWeight = Math.min(...weights);
+    const maxWeight = Math.max(...weights);
+    const yRange = Math.max(0.5, maxWeight - minWeight);
+
+    const points = entries
+        .map((entry, index) => {
+            const x = padding + (index / (entries.length - 1)) * (width - padding * 2);
+            const y = height - padding - ((entry.weight - minWeight) / yRange) * (height - padding * 2);
+            return `${x},${y}`;
+        })
+        .join(" ");
+
+    return { width, height, points, minY: minWeight, maxY: maxWeight };
+}
+
+function heatColor(count: number): string {
+    if (count <= 0) return "bg-gray-100 dark:bg-gray-800";
+    if (count === 1) return "bg-indigo-200";
+    if (count === 2) return "bg-indigo-400";
+    return "bg-indigo-600";
 }
 
 export default async function ProgressPage() {
@@ -32,175 +68,184 @@ export default async function ProgressPage() {
     }
 
     const userId = session.user.id;
-    const now = new Date();
 
-    // =====================================
-    // SECTION 1: Volume Over Time (8 Weeks)
-    // =====================================
-    const eightWeeksAgo = new Date();
-    eightWeeksAgo.setDate(now.getDate() - 8 * 7);
+    let weightRows: WeightLog[] = [];
+    let heatmapRows: WorkoutHeatmapRow[] = [];
+    let prRows: PersonalRecord[] = [];
 
-    const rawLogsRes = await pool.query(
-        `SELECT sets_completed, reps_completed, weight_kg, logged_at
-     FROM workout_logs
-     WHERE user_id = $1 AND logged_at >= $2`,
-        [userId, eightWeeksAgo.toISOString()]
-    );
-    const rawLogs = rawLogsRes.rows;
-
-    const weeklyVolumeMap = new Map<string, number>();
-    const weeks: string[] = [];
-    for (let i = 7; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(now.getDate() - i * 7);
-        const weekLabel = `W${getWeekNumber(d)}`;
-        weeks.push(weekLabel);
-        weeklyVolumeMap.set(weekLabel, 0);
+    try {
+        const weightRes = await pool.query(
+            `SELECT logged_at, weight_kg
+             FROM weight_logs
+             WHERE user_id = $1
+               AND logged_at >= (CURRENT_DATE - INTERVAL '30 days')
+             ORDER BY logged_at ASC`,
+            [userId]
+        );
+        weightRows = weightRes.rows as WeightLog[];
+    } catch {
+        weightRows = [];
     }
 
-    rawLogs.forEach((log) => {
-        if (!log.weight_kg) return;
-        const logDate = new Date(log.logged_at);
-        const weekLabel = `W${getWeekNumber(logDate)}`;
-        if (weeklyVolumeMap.has(weekLabel)) {
-            const volume =
-                (log.sets_completed || 0) * (log.reps_completed || 0) * (log.weight_kg || 0);
-            weeklyVolumeMap.set(weekLabel, (weeklyVolumeMap.get(weekLabel) || 0) + volume);
-        }
-    });
+    try {
+        const heatmapRes = await pool.query(
+            `SELECT DATE(logged_at AT TIME ZONE 'UTC') AS day, COUNT(*)::int AS count
+             FROM workout_logs
+             WHERE user_id = $1
+               AND logged_at >= (CURRENT_DATE - INTERVAL '84 days')
+             GROUP BY DATE(logged_at AT TIME ZONE 'UTC')`,
+            [userId]
+        );
+        heatmapRows = heatmapRes.rows as WorkoutHeatmapRow[];
+    } catch {
+        heatmapRows = [];
+    }
 
-    const volumeChartData = weeks.map((w) => ({
-        week: w,
-        volume: weeklyVolumeMap.get(w) || 0,
+    try {
+        const prsRes = await pool.query(
+            `SELECT exercise_name,
+                    MAX(weight_kg) AS max_weight,
+                    MAX(reps) AS max_reps,
+                    MAX(wl.logged_at) AS achieved_at
+             FROM workout_log_exercises wle
+             JOIN workout_logs wl ON wl.id = wle.workout_log_id
+             WHERE wl.user_id = $1 AND weight_kg IS NOT NULL
+             GROUP BY exercise_name
+             ORDER BY achieved_at DESC
+             LIMIT 10`,
+            [userId]
+        );
+        prRows = prsRes.rows as PersonalRecord[];
+    } catch {
+        prRows = [];
+    }
+
+    const weightSeries = weightRows.map((row) => ({
+        date: toIsoDate(new Date(row.logged_at)),
+        weight: Number(row.weight_kg),
     }));
 
-    // =====================================
-    // SECTION 2: Personal Records
-    // =====================================
-    const prLogsRes = await pool.query(
-        `SELECT wl.weight_kg, wl.logged_at, e.name AS exercise_name
-     FROM workout_logs wl
-     LEFT JOIN exercises e ON wl.exercise_id = e.id
-     WHERE wl.user_id = $1 AND wl.weight_kg IS NOT NULL`,
-        [userId]
-    );
+    const chart = buildWeightChartPoints(weightSeries);
 
-    const exerciseMaxes = new Map<string, { weight: number; date: string }>();
-    prLogsRes.rows.forEach((log) => {
-        const exName = log.exercise_name;
-        if (!exName || !log.weight_kg) return;
-        const current = exerciseMaxes.get(exName);
-        if (!current || log.weight_kg > current.weight) {
-            exerciseMaxes.set(exName, { weight: log.weight_kg, date: log.logged_at });
-        }
+    const workoutCountMap = new Map<string, number>();
+    heatmapRows.forEach((row) => {
+        workoutCountMap.set(toIsoDate(new Date(row.day)), Number(row.count));
     });
 
-    const prTableData = Array.from(exerciseMaxes.entries())
-        .map(([name, data]) => ({ name, weight: data.weight, date: data.date }))
-        .sort((a, b) => b.weight - a.weight);
+    const heatmapDays: Array<{ date: string; count: number }> = [];
+    const start = new Date();
+    start.setUTCHours(0, 0, 0, 0);
+    start.setUTCDate(start.getUTCDate() - 83);
+
+    for (let i = 0; i < 84; i += 1) {
+        const current = new Date(start);
+        current.setUTCDate(start.getUTCDate() + i);
+        const key = toIsoDate(current);
+        heatmapDays.push({ date: key, count: workoutCountMap.get(key) ?? 0 });
+    }
+
+    const weeks = Array.from({ length: 12 }, (_, weekIndex) =>
+        heatmapDays.slice(weekIndex * 7, weekIndex * 7 + 7)
+    );
 
     return (
-        <div className="max-w-5xl mx-auto space-y-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
-                Progress Tracking
-            </h1>
+        <div className="mx-auto max-w-6xl space-y-8">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Progress Tracking</h1>
 
-            {/* Volume Chart */}
-            <section className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
-                <div className="mb-4 text-center sm:text-left">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                        Total Volume Over Time
-                    </h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        Sum of sets × reps × weight (kg) for the last 8 weeks
-                    </p>
-                </div>
-                {rawLogs.length === 0 ? (
-                    <div className="text-center py-12">
-                        <p className="text-gray-500">
-                            Log some workouts to start tracking your progress
+            <section className="space-y-4">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Weight Trend (Last 30 Days)</h2>
+                <LogWeightForm />
+
+                <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                    {weightSeries.length < 2 ? (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Log your weight daily to see your progress chart 📉
                         </p>
-                    </div>
-                ) : (
-                    <VolumeChart data={volumeChartData} />
-                )}
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <svg viewBox={`0 0 ${chart.width} ${chart.height}`} className="h-64 w-full min-w-[640px]">
+                                <polyline
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="3"
+                                    className="text-indigo-500"
+                                    points={chart.points}
+                                />
+                                {weightSeries.map((entry, index) => {
+                                    const x = 24 + (index / (weightSeries.length - 1)) * (chart.width - 48);
+                                    const y = chart.height - 24 - ((entry.weight - chart.minY) / Math.max(0.5, chart.maxY - chart.minY)) * (chart.height - 48);
+                                    return (
+                                        <circle key={`${entry.date}-${entry.weight}`} cx={x} cy={y} r="4" className="fill-indigo-600">
+                                            <title>{`${entry.date}: ${entry.weight} kg`}</title>
+                                        </circle>
+                                    );
+                                })}
+                            </svg>
+                        </div>
+                    )}
+                </div>
             </section>
 
-            <div className="grid md:grid-cols-2 gap-8">
-                {/* Personal Records */}
-                <section className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col h-[500px]">
-                    <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 shrink-0">
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                            Personal Records
-                        </h2>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            Heaviest weight lifted per exercise
-                        </p>
-                    </div>
+            <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Workout Frequency Heatmap</h2>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Last 12 weeks of workout activity</p>
 
-                    <div className="overflow-y-auto flex-1 p-0">
-                        {prTableData.length === 0 ? (
-                            <div className="p-8 text-center bg-white dark:bg-gray-800 h-full flex flex-col items-center justify-center">
-                                <p className="text-gray-500 dark:text-gray-400 text-sm">
-                                    No personal records established yet.
-                                </p>
-                                <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">
-                                    Log some weighted exercises to see them here.
-                                </p>
-                            </div>
-                        ) : (
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-white dark:bg-gray-800 sticky top-0 z-10 shadow-sm">
-                                    <tr>
-                                        <th
-                                            scope="col"
-                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                                        >
-                                            Exercise
-                                        </th>
-                                        <th
-                                            scope="col"
-                                            className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                                        >
-                                            Best Weight
-                                        </th>
-                                        <th
-                                            scope="col"
-                                            className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                                        >
-                                            Date Achieved
-                                        </th>
+                <div className="mt-4 flex gap-2 overflow-x-auto">
+                    {weeks.map((week, weekIndex) => (
+                        <div key={`week-${weekIndex}`} className="flex flex-col gap-0.5">
+                            {week.map((day) => (
+                                <div
+                                    key={day.date}
+                                    title={`${day.date}: ${day.count} workouts`}
+                                    className={`h-3.5 w-3.5 rounded-sm ${heatColor(day.count)}`}
+                                />
+                            ))}
+                        </div>
+                    ))}
+                </div>
+
+                <div className="mt-3 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <span>Less</span>
+                    <span className="h-3.5 w-3.5 rounded-sm bg-gray-100 dark:bg-gray-800" />
+                    <span className="h-3.5 w-3.5 rounded-sm bg-indigo-200" />
+                    <span className="h-3.5 w-3.5 rounded-sm bg-indigo-400" />
+                    <span className="h-3.5 w-3.5 rounded-sm bg-indigo-600" />
+                    <span>More</span>
+                </div>
+            </section>
+
+            <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Personal Records</h2>
+
+                {prRows.length === 0 ? (
+                    <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+                        Complete workouts with weights to track your PRs 🏆
+                    </p>
+                ) : (
+                    <div className="mt-4 overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead>
+                                <tr>
+                                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Exercise</th>
+                                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Best Weight</th>
+                                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Reps</th>
+                                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Date achieved</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                {prRows.map((row) => (
+                                    <tr key={`${row.exercise_name}-${row.achieved_at}`}>
+                                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{row.exercise_name}</td>
+                                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{Number(row.max_weight)} kg</td>
+                                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{Number(row.max_reps)}</td>
+                                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{new Date(row.achieved_at).toLocaleDateString()}</td>
                                     </tr>
-                                </thead>
-                                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
-                                    {prTableData.map((pr, idx) => (
-                                        <tr
-                                            key={idx}
-                                            className="hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-                                        >
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                                                {pr.name}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600 text-right">
-                                                {pr.weight} kg
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
-                                                {new Date(pr.date).toLocaleDateString([], {
-                                                    month: "short",
-                                                    day: "numeric",
-                                                    year: "numeric",
-                                                })}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )}
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
-                </section>
-
-                <WeightTracker />
-            </div>
+                )}
+            </section>
         </div>
     );
 }

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { showToast } from "@/lib/toast";
 
 type Profile = {
     display_name: string | null;
@@ -23,8 +23,6 @@ type Profile = {
 export const metadata = { title: "Profile | MR-Fit" };
 
 export default function ProfilePage() {
-    const router = useRouter();
-
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [success, setSuccess] = useState<string | null>(null);
@@ -106,8 +104,10 @@ export default function ProfilePage() {
             }
 
             setSuccess("Profile updated!");
+            showToast("✅ Profile updated", "success");
         } catch (err: any) {
             setError(err.message || "Failed to update profile.");
+            showToast("❌ Something went wrong. Please try again.", "error");
         } finally {
             setSaving(false);
         }
@@ -125,6 +125,7 @@ export default function ProfilePage() {
             await signOut({ callbackUrl: "/login" });
         } catch (err: any) {
             setError(err.message);
+            showToast("❌ Something went wrong. Please try again.", "error");
         } finally {
             setSaving(false);
             setShowDeleteModal(false);

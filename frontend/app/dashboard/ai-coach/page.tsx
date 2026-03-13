@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
 
 type Exercise = {
     id?: string;
@@ -30,8 +31,13 @@ export default function AICoachPage() {
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [userName, setUserName] = useState<string>("there");
+    const [persistQueue, setPersistQueue] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+    const [isFlushingQueue, setIsFlushingQueue] = useState(false);
+    const [animatedText, setAnimatedText] = useState<Record<string, string>>({});
+    const [typingTargetId, setTypingTargetId] = useState<string | null>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const typingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -43,23 +49,102 @@ export default function AICoachPage() {
         text: `Hi ${name === "there" ? "" : name}! I'm your MR-Fit AI Coach. Ask me anything about your workouts, exercises, or fitness goals.`,
     });
 
-    const persistChatMessage = (role: "user" | "assistant", content: string) => {
-        try {
-            void fetch("/api/chat-history", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ role, content }),
-            }).catch(() => {
-                // silently ignore persistence failures
-            });
-        } catch {
-            // silently ignore persistence failures
-        }
+    const enqueuePersistence = (role: "user" | "assistant", content: string) => {
+        setPersistQueue((prev) => [...prev, { role, content }]);
     };
 
     useEffect(() => {
         scrollToBottom();
     }, [messages, sending]);
+
+    useEffect(() => {
+        if (isFlushingQueue || persistQueue.length === 0) {
+            return;
+        }
+
+        let cancelled = false;
+
+        const flushQueue = async () => {
+            const next = persistQueue[0];
+            if (!next) {
+                return;
+            }
+
+            setIsFlushingQueue(true);
+
+            try {
+                await fetch("/api/chat-history", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(next),
+                });
+            } catch {
+                // silently ignore persistence failures
+            } finally {
+                if (!cancelled) {
+                    setPersistQueue((prev) => prev.slice(1));
+                    setIsFlushingQueue(false);
+                }
+            }
+        };
+
+        void flushQueue();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [persistQueue, isFlushingQueue]);
+
+    useEffect(() => {
+        if (!typingTargetId) {
+            return;
+        }
+
+        const targetMessage = messages.find((msg) => msg.id === typingTargetId && msg.role === "ai");
+        if (!targetMessage) {
+            return;
+        }
+
+        if (typingIntervalRef.current) {
+            clearInterval(typingIntervalRef.current);
+        }
+
+        let index = 0;
+        setAnimatedText((prev) => ({ ...prev, [typingTargetId]: "" }));
+
+        typingIntervalRef.current = setInterval(() => {
+            index += 1;
+
+            setAnimatedText((prev) => ({
+                ...prev,
+                [typingTargetId]: targetMessage.text.slice(0, index),
+            }));
+
+            if (index >= targetMessage.text.length) {
+                if (typingIntervalRef.current) {
+                    clearInterval(typingIntervalRef.current);
+                    typingIntervalRef.current = null;
+                }
+                setTypingTargetId(null);
+            }
+        }, 12);
+
+        return () => {
+            if (typingIntervalRef.current) {
+                clearInterval(typingIntervalRef.current);
+                typingIntervalRef.current = null;
+            }
+        };
+    }, [typingTargetId, messages]);
+
+    useEffect(() => {
+        return () => {
+            if (typingIntervalRef.current) {
+                clearInterval(typingIntervalRef.current);
+                typingIntervalRef.current = null;
+            }
+        };
+    }, []);
 
     useEffect(() => {
         async function initChat() {
@@ -106,11 +191,12 @@ export default function AICoachPage() {
         initChat();
     }, []);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!input.trim() || sending) return;
+    const sendMessage = async (rawInput: string) => {
+        if (!rawInput.trim() || sending) {
+            return;
+        }
 
-        const userMessageText = input.trim();
+        const userMessageText = rawInput.trim();
         setInput("");
 
         const newUserMsg: Message = {
@@ -120,7 +206,7 @@ export default function AICoachPage() {
         };
 
         setMessages((prev) => [...prev, newUserMsg]);
-        persistChatMessage("user", userMessageText);
+        enqueuePersistence("user", userMessageText);
         setSending(true);
 
         try {
@@ -152,7 +238,8 @@ export default function AICoachPage() {
             };
 
             setMessages((prev) => [...prev, newAiMsg]);
-            persistChatMessage("assistant", newAiMsg.text);
+            enqueuePersistence("assistant", newAiMsg.text);
+            setTypingTargetId(newAiMsg.id);
         } catch {
             const errorMsg: Message = {
                 id: (Date.now() + 1).toString(),
@@ -160,9 +247,21 @@ export default function AICoachPage() {
                 text: "I'm having trouble connecting right now. Make sure Ollama is running: ollama serve",
             };
             setMessages((prev) => [...prev, errorMsg]);
+            enqueuePersistence("assistant", errorMsg.text);
+            setTypingTargetId(errorMsg.id);
         } finally {
             setSending(false);
         }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        await sendMessage(input);
+    };
+
+    const handleQuickAction = async (text: string) => {
+        setInput(text);
+        await sendMessage(text);
     };
 
     const handleClearChat = async () => {
@@ -172,8 +271,25 @@ export default function AICoachPage() {
             // silently ignore clear history failures
         }
 
+        if (typingIntervalRef.current) {
+            clearInterval(typingIntervalRef.current);
+            typingIntervalRef.current = null;
+        }
+
+        setTypingTargetId(null);
+        setAnimatedText({});
+        setPersistQueue([]);
         setMessages([getWelcomeMessage(userName)]);
     };
+
+    const hasUserSentMessage = messages.some((msg) => msg.role === "user");
+
+    const quickActions = [
+        "💪 Suggest today's workout",
+        "🥗 Analyze my nutrition",
+        "📈 How am I progressing?",
+        "🧘 Recovery tips",
+    ];
 
     return (
         <div className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto bg-gray-50 dark:bg-gray-900 border-x border-gray-200 dark:border-gray-800">
@@ -224,7 +340,13 @@ export default function AICoachPage() {
                                         }`}
                                 >
                                     <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-                                        {msg.text}
+                                        {msg.role === "ai" ? (
+                                            <ReactMarkdown>
+                                                {typingTargetId === msg.id ? animatedText[msg.id] ?? "" : msg.text}
+                                            </ReactMarkdown>
+                                        ) : (
+                                            msg.text
+                                        )}
                                     </div>
 
                                     {msg.exercises && msg.exercises.length > 0 && (
@@ -278,6 +400,22 @@ export default function AICoachPage() {
 
             {/* Input Area */}
             <div className="bg-white dark:bg-gray-800 p-4 border-t border-gray-200 dark:border-gray-700">
+                {!hasUserSentMessage && !loading && (
+                    <div className="mb-3 flex flex-wrap gap-2">
+                        {quickActions.map((chip) => (
+                            <button
+                                key={chip}
+                                type="button"
+                                onClick={() => void handleQuickAction(chip)}
+                                disabled={sending}
+                                className="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-indigo-100 hover:text-indigo-700 disabled:opacity-60 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-indigo-900/40 dark:hover:text-indigo-300"
+                            >
+                                {chip}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
                 <form onSubmit={handleSubmit} className="flex gap-2">
                     <textarea
                         value={input}
