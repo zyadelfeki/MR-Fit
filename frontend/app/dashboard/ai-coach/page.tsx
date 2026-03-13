@@ -17,6 +17,13 @@ type Message = {
     exercises?: Exercise[];
 };
 
+type ChatHistoryRow = {
+    id: string;
+    role: "user" | "assistant";
+    content: string;
+    created_at: string;
+};
+
 export default function AICoachPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
@@ -30,22 +37,67 @@ export default function AICoachPage() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
+    const getWelcomeMessage = (name: string): Message => ({
+        id: "welcome-1",
+        role: "ai",
+        text: `Hi ${name === "there" ? "" : name}! I'm your MR-Fit AI Coach. Ask me anything about your workouts, exercises, or fitness goals.`,
+    });
+
+    const persistChatMessage = (role: "user" | "assistant", content: string) => {
+        try {
+            void fetch("/api/chat-history", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ role, content }),
+            }).catch(() => {
+                // silently ignore persistence failures
+            });
+        } catch {
+            // silently ignore persistence failures
+        }
+    };
+
     useEffect(() => {
         scrollToBottom();
     }, [messages, sending]);
 
     useEffect(() => {
         async function initChat() {
+            let resolvedName = "there";
+
             try {
                 const res = await fetch("/api/profile");
                 if (res.ok) {
                     const data = await res.json();
                     if (data.profile?.display_name) {
-                        setUserName(data.profile.display_name);
+                        resolvedName = data.profile.display_name;
+                        setUserName(resolvedName);
                     }
                 }
             } catch {
-                // silently ignore — welcome message still works without a name
+                // silently ignore — fallback welcome message still works
+            }
+
+            try {
+                const historyRes = await fetch("/api/chat-history", { cache: "no-store" });
+                if (historyRes.ok) {
+                    const historyData = (await historyRes.json()) as ChatHistoryRow[];
+                    if (Array.isArray(historyData) && historyData.length > 0) {
+                        const mapped = historyData.map((row) => ({
+                            id: row.id,
+                            role: row.role === "assistant" ? "ai" : "user",
+                            text: row.content,
+                        })) as Message[];
+
+                        setMessages(mapped);
+                    } else {
+                        setMessages([getWelcomeMessage(resolvedName)]);
+                    }
+                } else {
+                    setMessages([getWelcomeMessage(resolvedName)]);
+                }
+            } catch {
+                setMessages([getWelcomeMessage(resolvedName)]);
             } finally {
                 setLoading(false);
             }
@@ -53,19 +105,6 @@ export default function AICoachPage() {
 
         initChat();
     }, []);
-
-    // Set initial welcome message once name is loaded
-    useEffect(() => {
-        if (!loading && messages.length === 0) {
-            setMessages([
-                {
-                    id: "welcome-1",
-                    role: "ai",
-                    text: `Hi ${userName === "there" ? "" : userName}! I'm your MR-Fit AI Coach. Ask me anything about your workouts, exercises, or fitness goals.`,
-                },
-            ]);
-        }
-    }, [loading, userName, messages.length]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -81,6 +120,7 @@ export default function AICoachPage() {
         };
 
         setMessages((prev) => [...prev, newUserMsg]);
+        persistChatMessage("user", userMessageText);
         setSending(true);
 
         try {
@@ -112,6 +152,7 @@ export default function AICoachPage() {
             };
 
             setMessages((prev) => [...prev, newAiMsg]);
+            persistChatMessage("assistant", newAiMsg.text);
         } catch {
             const errorMsg: Message = {
                 id: (Date.now() + 1).toString(),
@@ -124,16 +165,39 @@ export default function AICoachPage() {
         }
     };
 
+    const handleClearChat = async () => {
+        try {
+            await fetch("/api/chat-history", { method: "DELETE" });
+        } catch {
+            // silently ignore clear history failures
+        }
+
+        setMessages([getWelcomeMessage(userName)]);
+    };
+
     return (
         <div className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto bg-gray-50 dark:bg-gray-900 border-x border-gray-200 dark:border-gray-800">
             {/* Header */}
             <div className="bg-white dark:bg-gray-800 px-6 py-4 border-b border-gray-200 dark:border-gray-700 shadow-sm z-10">
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <span className="text-2xl">🤖</span> AI Coach
-                </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Powered by Ollama (local LLM) — your personalized fitness assistant
-                </p>
+                <div className="flex items-start justify-between gap-3">
+                    <div>
+                        <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <span className="text-2xl">🤖</span> AI Coach
+                        </h1>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Powered by Ollama (local LLM) — your personalized fitness assistant
+                        </p>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={handleClearChat}
+                        disabled={loading}
+                        className="inline-flex items-center rounded-md bg-gray-100 dark:bg-gray-700 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
+                    >
+                        🗑 Clear Chat
+                    </button>
+                </div>
             </div>
 
             {/* Chat Area */}

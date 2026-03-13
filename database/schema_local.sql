@@ -147,3 +147,17 @@ LANGUAGE sql STABLE AS $$
   ORDER BY embedding <=> query_embedding
   LIMIT match_count;
 $$;
+
+-- ============================================================
+-- Chat history
+-- ============================================================
+CREATE TABLE IF NOT EXISTS chat_history (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id uuid REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  role text NOT NULL CHECK (role IN ('user', 'assistant')),
+  content text NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_history_user
+  ON chat_history(user_id, created_at DESC);

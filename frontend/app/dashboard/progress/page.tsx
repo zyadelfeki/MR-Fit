@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import pool from "@/lib/db";
 import dynamic from "next/dynamic";
+import WeightTracker from "@/components/WeightTracker";
 
 export const metadata = {
     title: "Progress | MR-Fit",
@@ -97,19 +98,6 @@ export default async function ProgressPage() {
     const prTableData = Array.from(exerciseMaxes.entries())
         .map(([name, data]) => ({ name, weight: data.weight, date: data.date }))
         .sort((a, b) => b.weight - a.weight);
-
-    // =====================================
-    // SECTION 3: Bodyweight Trend
-    // =====================================
-    const weightRes = await pool.query(
-        `SELECT value, unit, recorded_at
-     FROM wearable_data
-     WHERE user_id = $1 AND metric = 'weight_kg'
-     ORDER BY recorded_at DESC
-     LIMIT 10`,
-        [userId]
-    );
-    const weightData = weightRes.rows;
 
     return (
         <div className="max-w-5xl mx-auto space-y-8">
@@ -211,64 +199,7 @@ export default async function ProgressPage() {
                     </div>
                 </section>
 
-                {/* Bodyweight Trend */}
-                <section className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col h-[500px]">
-                    <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 shrink-0">
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                            Bodyweight Trend
-                        </h2>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            Last 10 weigh-ins
-                        </p>
-                    </div>
-
-                    <div className="overflow-y-auto flex-1 p-0">
-                        {weightData.length === 0 ? (
-                            <div className="p-8 text-center bg-white dark:bg-gray-800 h-full flex flex-col items-center justify-center">
-                                <p className="text-gray-500 dark:text-gray-400 text-sm">
-                                    No weight data synced yet.
-                                </p>
-                            </div>
-                        ) : (
-                            <ul className="divide-y divide-gray-100 dark:divide-gray-700">
-                                {weightData.map((entry, idx) => (
-                                    <li
-                                        key={idx}
-                                        className="px-6 py-4 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-                                    >
-                                        <div className="flex items-center">
-                                            <div className="bg-blue-100 dark:bg-blue-900/40 p-2 rounded-full mr-4">
-                                                <svg
-                                                    className="w-4 h-4 text-blue-600 dark:text-blue-400"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"
-                                                    />
-                                                </svg>
-                                            </div>
-                                            <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                                {new Date(entry.recorded_at).toLocaleDateString([], {
-                                                    month: "long",
-                                                    day: "numeric",
-                                                    year: "numeric",
-                                                })}
-                                            </span>
-                                        </div>
-                                        <span className="text-base font-bold text-gray-900 dark:text-white">
-                                            {entry.value} {entry.unit}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
-                </section>
+                <WeightTracker />
             </div>
         </div>
     );
