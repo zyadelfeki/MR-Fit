@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS users (
   created_at timestamptz DEFAULT now()
 );
 
+ALTER TABLE users ADD COLUMN IF NOT EXISTS security_question text;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS security_answer_hash text;
+
 -- ============================================================
 -- Profiles
 -- ============================================================

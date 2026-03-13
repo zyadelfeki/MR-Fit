@@ -4,11 +4,11 @@ import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
     try {
-        const { email, password } = await req.json();
+        const { email, password, securityQuestion, securityAnswer } = await req.json();
 
-        if (!email || !password) {
+        if (!email || !password || !securityQuestion || !securityAnswer) {
             return NextResponse.json(
-                { error: "Email and password required" },
+                { error: "Email, password, security question, and security answer are required" },
                 { status: 400 }
             );
         }
@@ -21,10 +21,11 @@ export async function POST(req: Request) {
         }
 
         const hashed = await bcrypt.hash(password, 12);
+        const securityAnswerHash = await bcrypt.hash(securityAnswer.toLowerCase().trim(), 12);
 
         const res = await pool.query(
-            "INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email",
-            [email, hashed]
+            "INSERT INTO users (email, password_hash, security_question, security_answer_hash) VALUES ($1, $2, $3, $4) RETURNING id, email",
+            [email, hashed, securityQuestion, securityAnswerHash]
         );
 
         const user = res.rows[0];
