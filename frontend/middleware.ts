@@ -12,7 +12,8 @@ export default auth((req) => {
 
   const isProtected =
     nextUrl.pathname.startsWith("/dashboard") ||
-    nextUrl.pathname.startsWith("/onboarding");
+    nextUrl.pathname.startsWith("/onboarding") ||
+    nextUrl.pathname.startsWith("/exercises");
 
   // Redirect unauthenticated users away from protected pages
   if (!isLoggedIn && isProtected) {

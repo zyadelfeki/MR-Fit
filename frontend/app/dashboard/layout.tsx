@@ -8,6 +8,7 @@ import { useSession, signOut } from "next-auth/react";
 const navLinks = [
     { name: "Dashboard", href: "/dashboard" },
     { name: "Workouts", href: "/dashboard/workouts" },
+    { name: "🏋️ Exercises", href: "/exercises" },
     { name: "Progress", href: "/dashboard/progress" },
     { name: "AI Coach", href: "/dashboard/ai-coach" },
     { name: "Nutrition", href: "/dashboard/nutrition" },
