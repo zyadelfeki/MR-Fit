@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import pool from "@/lib/db";
 
-// GET /api/workouts/[id] — fetch workout detail with logged exercises
+// GET /api/workouts/[id] — fetch workout detail with planned exercises
 export async function GET(
     _req: Request,
     { params }: { params: { id: string } }
@@ -17,7 +17,7 @@ export async function GET(
 
         // Fetch workout and verify ownership
         const workoutRes = await pool.query(
-            `SELECT id, title, source, duration_min, scheduled_at, created_at
+            `SELECT id, title, duration_min, scheduled_at, source
        FROM workouts
        WHERE id = $1 AND user_id = $2`,
             [id, session.user.id]
@@ -29,25 +29,23 @@ export async function GET(
 
         const workout = workoutRes.rows[0];
 
-        // Fetch logs for this workout
-        const logsRes = await pool.query(
-            `SELECT wl.id, wl.sets_completed, wl.reps_completed, wl.weight_kg,
-              wl.logged_at, wl.notes, e.name AS exercise_name
-       FROM workout_logs wl
-       LEFT JOIN exercises e ON wl.exercise_id = e.id
-       WHERE wl.workout_id = $1
-       ORDER BY wl.logged_at ASC`,
+        // Fetch planned workout exercises in display order
+        const exercisesRes = await pool.query(
+            `SELECT we.id as workout_exercise_id, we.exercise_id, we.sets_target, we.reps_target,
+              we.order_index, e.name, e.muscle_group, e.difficulty, e.description
+       FROM workout_exercises we
+       JOIN exercises e ON e.id = we.exercise_id
+       WHERE we.workout_id = $1
+       ORDER BY we.order_index ASC`,
             [id]
         );
 
-        // Fetch all exercises for the log form dropdown
-        const exercisesRes = await pool.query(
-            `SELECT id, name FROM exercises ORDER BY name ASC`
-        );
-
         return NextResponse.json({
-            workout,
-            logs: logsRes.rows,
+            id: workout.id,
+            title: workout.title,
+            duration_min: workout.duration_min,
+            scheduled_at: workout.scheduled_at,
+            source: workout.source,
             exercises: exercisesRes.rows,
         });
     } catch (err: any) {

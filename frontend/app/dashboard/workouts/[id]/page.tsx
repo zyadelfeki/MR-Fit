@@ -30,6 +30,14 @@ export default async function WorkoutDetailPage({
 
     const workout = workoutRes.rows[0];
 
+    const workoutExercisesCountRes = await pool.query(
+        `SELECT COUNT(*)::int AS count
+     FROM workout_exercises
+     WHERE workout_id = $1`,
+        [workoutId]
+    );
+    const hasPlannedExercises = (workoutExercisesCountRes.rows[0]?.count || 0) > 0;
+
     // Fetch logged sets for this workout
     const logsRes = await pool.query(
         `SELECT wl.id, wl.sets_completed, wl.reps_completed, wl.weight_kg,
@@ -57,10 +65,18 @@ export default async function WorkoutDetailPage({
                 ← Back to Workouts
             </Link>
 
-            <div className="mb-6 flex items-center">
+            <div className="mb-6 flex items-center justify-between gap-4">
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white truncate">
                     {workout.title}
                 </h1>
+                {hasPlannedExercises && (
+                    <Link
+                        href={`/dashboard/workouts/${workout.id}/session`}
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition shadow-md text-lg"
+                    >
+                        ▶ Start Workout
+                    </Link>
+                )}
             </div>
 
             {/* Workout meta */}
