@@ -54,14 +54,14 @@ export default function LogWeightForm() {
                     value={weightKg}
                     onChange={(e) => setWeightKg(e.target.value === "" ? "" : Number(e.target.value))}
                     placeholder="e.g. 78.4"
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                     required
                 />
             </div>
             <button
                 type="submit"
                 disabled={saving}
-                className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-60"
+                className="btn-brand disabled:opacity-60"
             >
                 {saving ? "Saving..." : "Log Weight"}
             </button>

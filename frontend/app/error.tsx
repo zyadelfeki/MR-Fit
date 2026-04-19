@@ -23,7 +23,7 @@ export default function Error({
                 <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
                     <button
                         onClick={() => reset()}
-                        className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                        className="btn-brand"
                     >
                         Try again
                     </button>

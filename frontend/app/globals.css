@@ -13,4 +13,55 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  :root {
+    --brand-primary: #1a1a1a;
+    --brand-primary-hover: #333333;
+    --brand-accent: #e5e7eb;
+    --brand-cta: #ffffff;
+  }
+}
+
+@layer components {
+  .btn-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 0.5rem;
+    background: var(--brand-primary);
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    color: var(--brand-cta);
+    transition: background 150ms ease, transform 100ms ease;
+  }
+
+  .btn-brand:hover {
+    background: var(--brand-primary-hover);
+    transform: translateY(-1px);
+  }
+
+  .btn-brand-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 0.5rem;
+    border: 1.5px solid var(--brand-primary);
+    background: transparent;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    color: var(--brand-primary);
+    transition: background 150ms ease, color 150ms ease, transform 100ms ease;
+  }
+
+  .btn-brand-outline:hover {
+    background: var(--brand-primary);
+    color: var(--brand-cta);
+    transform: translateY(-1px);
+  }
 }

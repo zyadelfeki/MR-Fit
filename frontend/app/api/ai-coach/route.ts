@@ -149,7 +149,7 @@ export async function POST(req: Request) {
             : "No recent workout logged";
 
         const systemPrompt = [
-            "You are an expert personal trainer and nutritionist AI coach for MR-Fit.",
+            "You are an expert personal trainer and nutritionist AI coach for MR.FIT.",
             `You are speaking to ${name}, a ${age}-year-old${gender}.`,
             `Their stats: ${weight}kg, ${height}cm, goal: ${goal}.`,
             `Activity level: ${activityLevel}.`,

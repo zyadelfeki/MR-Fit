@@ -81,7 +81,7 @@ export default function ExercisesPage() {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Search exercises..."
-                    className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                    className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                 />
 
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -94,7 +94,7 @@ export default function ExercisesPage() {
                                 onClick={() => setActiveMuscle(filter)}
                                 className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                                     active
-                                        ? "bg-indigo-600 text-white"
+                                        ? "bg-gray-900 text-white"
                                         : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                                 }`}
                             >
@@ -120,7 +120,7 @@ export default function ExercisesPage() {
                     <p className="mt-2">No exercises found. Try a different search.</p>
                     <Link
                         href="/dashboard/workouts/new"
-                        className="mt-4 inline-flex rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
+                        className="mt-4 inline-flex rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
                     >
                         Create a Workout
                     </Link>
@@ -136,7 +136,7 @@ export default function ExercisesPage() {
                                 <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
                                     {exercise.name}
                                 </h2>
-                                <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+                                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
                                     {exercise.category}
                                 </span>
                             </div>
@@ -176,7 +176,7 @@ export default function ExercisesPage() {
                                         name: exercise.name,
                                     })
                                 }
-                                className="mt-auto pt-4 text-left text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                className="mt-auto pt-4 text-left text-xs font-semibold text-gray-900 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
                             >
                                 Add to Workout
                             </button>
@@ -187,3 +187,4 @@ export default function ExercisesPage() {
         </div>
     );
 }
+

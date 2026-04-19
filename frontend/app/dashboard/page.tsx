@@ -4,7 +4,7 @@ import pool from "@/lib/db";
 import Link from "next/link";
 
 export const metadata = {
-    title: "Dashboard | MR-Fit",
+    title: "Dashboard | MR.FIT",
     description: "Your personal fitness overview",
 };
 
@@ -181,7 +181,7 @@ export default async function DashboardPage() {
                     <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
                         Workouts This Week
                     </h3>
-                    <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+                    <p className="text-3xl font-bold text-gray-900 dark:text-gray-400">
                         {displayWorkouts}
                     </p>
                 </div>
@@ -222,32 +222,32 @@ export default async function DashboardPage() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <Link
                         href="/dashboard/workouts/new"
-                        className="group rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-indigo-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
+                        className="group rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-gray-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
                     >
                         <div className="mb-2 text-xl">🏋️</div>
                         <h3 className="font-semibold text-gray-900 dark:text-white">Log a Workout</h3>
                         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Start tracking today&apos;s training session.</p>
-                        <span className="mt-3 inline-block text-sm font-medium text-indigo-600 transition group-hover:translate-x-1 dark:text-indigo-400">Open →</span>
+                        <span className="mt-3 inline-block text-sm font-medium text-gray-900 transition group-hover:translate-x-1 dark:text-gray-400">Open →</span>
                     </Link>
 
                     <Link
                         href="/dashboard/nutrition"
-                        className="group rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-indigo-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
+                        className="group rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-gray-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
                     >
                         <div className="mb-2 text-xl">🥗</div>
                         <h3 className="font-semibold text-gray-900 dark:text-white">Log Food</h3>
                         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Add meals and monitor your daily macros.</p>
-                        <span className="mt-3 inline-block text-sm font-medium text-indigo-600 transition group-hover:translate-x-1 dark:text-indigo-400">Open →</span>
+                        <span className="mt-3 inline-block text-sm font-medium text-gray-900 transition group-hover:translate-x-1 dark:text-gray-400">Open →</span>
                     </Link>
 
                     <Link
                         href="/dashboard/ai-coach"
-                        className="group rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-indigo-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
+                        className="group rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-gray-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
                     >
                         <div className="mb-2 text-xl">🤖</div>
                         <h3 className="font-semibold text-gray-900 dark:text-white">Ask AI Coach</h3>
                         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Get tailored advice based on your progress.</p>
-                        <span className="mt-3 inline-block text-sm font-medium text-indigo-600 transition group-hover:translate-x-1 dark:text-indigo-400">Open →</span>
+                        <span className="mt-3 inline-block text-sm font-medium text-gray-900 transition group-hover:translate-x-1 dark:text-gray-400">Open →</span>
                     </Link>
                 </div>
             </section>
@@ -278,3 +278,4 @@ export default async function DashboardPage() {
         </div>
     );
 }
+

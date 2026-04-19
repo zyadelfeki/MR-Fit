@@ -61,7 +61,7 @@ export default function LoginPage() {
           value={email}
           autoComplete="email"
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-gray-900 focus:ring-gray-900 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
         />
       </div>
 
@@ -76,10 +76,10 @@ export default function LoginPage() {
           value={password}
           autoComplete="current-password"
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-gray-900 focus:ring-gray-900 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
         />
         <div className="mt-2 text-right">
-          <Link href="/forgot-password" className="text-sm text-indigo-600 hover:underline">
+          <Link href="/forgot-password" className="text-sm text-gray-900 hover:underline dark:text-gray-100">
             Forgot password?
           </Link>
         </div>
@@ -88,16 +88,16 @@ export default function LoginPage() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-md bg-indigo-600 py-2 px-4 text-white hover:bg-indigo-700 disabled:opacity-50 transition"
+        className="btn-brand w-full justify-center disabled:opacity-50"
       >
         {loading ? "Signing in..." : "Sign in"}
       </button>
 
       <p className="text-sm text-center text-gray-600 dark:text-gray-400">
         Don&apos;t have an account?{" "}
-        <Link href="/signup" className="text-indigo-600 hover:underline">
-          Sign up
-        </Link>
+          <Link href="/signup" className="text-gray-900 hover:underline dark:text-gray-100">
+            Sign up
+          </Link>
       </p>
     </form>
   );

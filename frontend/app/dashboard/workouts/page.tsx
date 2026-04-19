@@ -4,7 +4,7 @@ import pool from "@/lib/db";
 import Link from "next/link";
 
 export const metadata = {
-    title: "Workouts | MR-Fit",
+    title: "Workouts | MR.FIT",
     description: "Track and manage your workouts",
 };
 
@@ -75,7 +75,7 @@ export default async function WorkoutsPage() {
                     <div className="flex items-center gap-2">
                         <Link
                             href="/dashboard/workouts/new"
-                            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                            className="px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800"
                         >
                             Create Workout
                         </Link>
@@ -146,7 +146,7 @@ export default async function WorkoutsPage() {
 
                                     <Link
                                         href={`/dashboard/workouts/${workout.id}`}
-                                        className="inline-flex text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                        className="inline-flex text-sm font-medium text-gray-900 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
                                     >
                                         View Details →
                                     </Link>
@@ -159,3 +159,4 @@ export default async function WorkoutsPage() {
         </div>
     );
 }
+

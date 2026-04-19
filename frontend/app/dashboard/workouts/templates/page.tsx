@@ -163,7 +163,7 @@ export default function WorkoutTemplatesPage() {
         <div className="mx-auto max-w-6xl space-y-8">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Workout Templates</h1>
-                <Link href="/dashboard/workouts" className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">
+                <Link href="/dashboard/workouts" className="text-sm font-medium text-gray-900 hover:text-gray-800 dark:text-gray-400">
                     Back to Workouts
                 </Link>
             </div>
@@ -175,14 +175,14 @@ export default function WorkoutTemplatesPage() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Template name"
-                        className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                         required
                     />
                     <input
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         placeholder="Description (optional)"
-                        className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                     />
                 </div>
 
@@ -243,7 +243,7 @@ export default function WorkoutTemplatesPage() {
                     <button
                         type="submit"
                         disabled={saving}
-                        className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-60"
+                        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-60"
                     >
                         {saving ? "Saving..." : "Save Template"}
                     </button>
@@ -291,3 +291,4 @@ export default function WorkoutTemplatesPage() {
         </div>
     );
 }
+

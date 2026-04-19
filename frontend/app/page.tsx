@@ -1,15 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Logo from "@/components/Logo";
 
 const subheadline =
   "Personalized workouts, nutrition tracking, and an AI coach that actually knows your training history - all running locally on your machine.";
 
 export const metadata: Metadata = {
-  title: "MR-Fit — AI Fitness Companion",
+  title: "MR.FIT — AI Fitness Companion",
   description: subheadline,
 };
 
-const features = [
+type Feature = {
+  icon: string;
+  title: string;
+  description: string;
+  featured?: boolean;
+};
+
+const features: Feature[] = [
   {
     icon: "🏋️",
     title: "Smart Workout Tracking",
@@ -45,6 +53,13 @@ const features = [
     description:
       "No cloud accounts. No API keys. Just PostgreSQL and Ollama.",
   },
+  {
+    icon: "⌚",
+    title: "Smart Exercise Tracker",
+    description:
+      "Detect exercises automatically and count reps from wrist IMU data.",
+    featured: true,
+  },
 ];
 
 const steps = [
@@ -66,28 +81,36 @@ const steps = [
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
-      <section className="w-full bg-gradient-to-r from-indigo-600 to-purple-700 text-white">
-        <div className="mx-auto flex max-w-6xl flex-col items-start px-6 py-20 md:px-10 md:py-28">
-          <p className="mb-4 rounded-full border border-white/30 bg-white/10 px-4 py-1 text-sm font-medium tracking-wide">
-            MR-Fit
-          </p>
+      <section className="w-full bg-gradient-to-r from-gray-950 via-gray-900 to-gray-800 text-white">
+        <div className="mx-auto max-w-6xl px-6 py-6 md:px-10">
+          <header className="flex items-center justify-between gap-4">
+            <Logo variant="full" height={44} />
+            <div className="flex items-center gap-3">
+              <Link href="/login" className="text-sm font-medium text-gray-200 transition hover:text-white">
+                Sign in
+              </Link>
+              <Link href="/signup" className="btn-brand bg-white text-gray-900 hover:bg-gray-100">
+                Get started
+              </Link>
+            </div>
+          </header>
+        </div>
+
+        <div className="mx-auto flex max-w-6xl flex-col items-start px-6 py-16 md:px-10 md:py-24">
+          <div className="mb-8 rounded-2xl bg-white px-4 py-3 shadow-lg">
+            <Logo variant="full" height={64} />
+          </div>
           <h1 className="max-w-3xl text-4xl font-bold leading-tight sm:text-5xl md:text-6xl">
             Your AI-Powered Fitness Companion
           </h1>
-          <p className="mt-6 max-w-3xl text-base text-indigo-100 sm:text-lg">
+          <p className="mt-6 max-w-3xl text-base text-gray-200 sm:text-lg">
             {subheadline}
           </p>
           <div className="mt-10 flex flex-wrap gap-4">
-            <Link
-              href="/signup"
-              className="rounded-lg bg-white px-6 py-3 text-sm font-semibold text-indigo-700 shadow-lg transition hover:bg-indigo-50"
-            >
+            <Link href="/signup" className="btn-brand bg-white text-gray-900 hover:bg-gray-100">
               Get Started Free
             </Link>
-            <Link
-              href="/login"
-              className="rounded-lg border border-white/80 bg-transparent px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-            >
+            <Link href="/login" className="btn-brand-outline border-white/80 text-white hover:bg-white hover:text-gray-900">
               Sign In
             </Link>
           </div>
@@ -101,17 +124,46 @@ export default function HomePage() {
           subscriptions, lock-in, or cloud complexity.
         </p>
 
+        <div className="mt-10 rounded-2xl border border-gray-800 border-l-4 border-l-emerald-400 bg-gray-900 p-8 text-white shadow-xl">
+          <div className="flex items-start justify-between gap-6">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-300">
+                Smart Exercise Tracker
+              </p>
+              <h3 className="mt-3 text-2xl font-bold sm:text-3xl">
+                Automatically detects your exercise and counts your reps.
+              </h3>
+              <p className="mt-4 max-w-3xl text-sm leading-6 text-gray-200 sm:text-base">
+                100% classification accuracy • MAE &lt; 1 rep/set • Powered by a
+                Random Forest model and wrist-worn IMU data.
+              </p>
+            </div>
+            <span className="rounded-full bg-emerald-400 px-3 py-1 text-xs font-bold uppercase tracking-[0.25em] text-gray-950">
+              New
+            </span>
+          </div>
+          <div className="mt-6 flex flex-wrap gap-3 text-sm text-gray-200">
+            <span className="rounded-full border border-white/10 px-3 py-1">📊 9,009 training samples</span>
+            <span className="rounded-full border border-white/10 px-3 py-1">🎯 5 exercise types</span>
+            <span className="rounded-full border border-white/10 px-3 py-1">⌚ Wrist-worn IMU</span>
+          </div>
+        </div>
+
         <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feature) => (
             <article
               key={feature.title}
-              className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
+              className={`rounded-2xl border p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+                feature.featured
+                  ? "border-gray-900 bg-gray-900 text-white dark:border-gray-700 dark:bg-gray-950"
+                  : "border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
+              }`}
             >
               <div className="text-2xl" aria-hidden="true">
                 {feature.icon}
               </div>
               <h3 className="mt-3 text-lg font-semibold">{feature.title}</h3>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              <p className={`mt-2 text-sm ${feature.featured ? "text-gray-200" : "text-gray-600 dark:text-gray-300"}`}>
                 {feature.description}
               </p>
             </article>
@@ -128,7 +180,7 @@ export default function HomePage() {
                 key={step.title}
                 className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900"
               >
-                <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-sm font-bold text-white">
+                <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-900 text-sm font-bold text-white">
                   {index + 1}
                 </div>
                 <h3 className="mt-4 text-lg font-semibold">{step.title}</h3>
@@ -142,12 +194,12 @@ export default function HomePage() {
       </section>
 
       <footer className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-10 text-sm text-gray-600 dark:text-gray-400 md:flex-row md:items-center md:justify-between md:px-10">
-        <p>MR-Fit © 2026 — Open Source Fitness Platform</p>
+        <p>MR.FIT © 2026 — Open Source Fitness Platform</p>
         <div className="flex items-center gap-4">
-          <Link href="/signup" className="hover:text-indigo-600 dark:hover:text-indigo-400">
+          <Link href="/signup" className="hover:text-gray-900 dark:hover:text-white">
             Sign up
           </Link>
-          <Link href="/login" className="hover:text-indigo-600 dark:hover:text-indigo-400">
+          <Link href="/login" className="hover:text-gray-900 dark:hover:text-white">
             Login
           </Link>
         </div>

@@ -5,11 +5,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import Toast from "@/components/Toast";
+import Logo from "@/components/Logo";
 
-const navLinks = [
+type NavLink = {
+    name: string;
+    href: string;
+    icon?: "sensor";
+    badge?: string;
+};
+
+const navLinks: NavLink[] = [
     { name: "Dashboard", href: "/dashboard" },
     { name: "Workouts", href: "/dashboard/workouts" },
-    { name: "🏋️ Exercises", href: "/dashboard/exercises" },
+    { name: "Exercises", href: "/dashboard/exercises" },
+    { name: "Smart Tracker", href: "/dashboard/smart-tracker", icon: "sensor", badge: "NEW" as const },
     { name: "Progress", href: "/dashboard/progress" },
     { name: "AI Coach", href: "/dashboard/ai-coach" },
     { name: "Nutrition", href: "/dashboard/nutrition" },
@@ -97,16 +106,12 @@ export default function DashboardLayout({
     return (
         <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
             <div
-                className={`fixed left-0 top-0 z-50 h-1 w-full transition-opacity duration-200 ${routeBarVisible ? "opacity-100" : "opacity-0"
-                    }`}
+                className={`fixed left-0 top-0 z-50 h-1 w-full transition-opacity duration-200 ${routeBarVisible ? "opacity-100" : "opacity-0"}`}
             >
                 <div
-                    className={`h-full bg-indigo-500 transition-all duration-300 ${routeBarPhase === "idle"
-                            ? "w-0"
-                            : routeBarPhase === "loading"
-                                ? "w-2/3"
-                                : "w-full"
-                        }`}
+                    className={`h-full bg-gray-900 transition-all duration-300 ${
+                        routeBarPhase === "idle" ? "w-0" : routeBarPhase === "loading" ? "w-2/3" : "w-full"
+                    }`}
                 />
             </div>
 
@@ -120,13 +125,14 @@ export default function DashboardLayout({
 
             {/* Sidebar */}
             <div
-                className={`fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-                    }`}
+                className={`fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}
             >
                 <div className="flex flex-col h-full">
                     {/* Logo/Brand */}
                     <div className="flex items-center justify-center h-16 border-b px-4">
-                        <span className="text-xl font-bold text-blue-600">MR-Fit</span>
+                        <div className="inline-flex rounded-xl bg-gray-900 px-3 py-2 dark:bg-white">
+                            <Logo variant="full" height={36} />
+                        </div>
                     </div>
 
                     {/* Nav Links */}
@@ -137,13 +143,34 @@ export default function DashboardLayout({
                                 <Link
                                     key={link.name}
                                     href={link.href}
-                                    className={`block px-4 py-3 rounded-md transition-colors ${isActive
-                                            ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold"
-                                            : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-white"
-                                        }`}
+                                    className={`flex items-center gap-3 rounded-md px-4 py-3 transition-colors ${
+                                        isActive
+                                            ? "bg-gray-100 font-semibold text-gray-900 dark:bg-gray-800 dark:text-white"
+                                            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
+                                    }`}
                                     onClick={() => setIsMobileMenuOpen(false)}
                                 >
-                                    {link.name}
+                                    {link.icon === "sensor" ? (
+                                        <svg
+                                            width="20"
+                                            height="20"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            aria-hidden="true"
+                                        >
+                                            <polyline points="2 12 6 12 8 4 10 20 12 12 14 12 16 8 18 16 20 12 22 12" />
+                                        </svg>
+                                    ) : null}
+                                    <span>{link.name}</span>
+                                    {link.badge ? (
+                                        <span className="ml-auto rounded-full bg-gray-900 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white dark:bg-white dark:text-gray-900">
+                                            {link.badge}
+                                        </span>
+                                    ) : null}
                                 </Link>
                             );
                         })}
@@ -161,7 +188,7 @@ export default function DashboardLayout({
 
                         {userEmail && (
                             <div className="flex items-center gap-3 mb-4 px-2">
-                                <div className="h-9 w-9 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                <div className="h-9 w-9 rounded-full bg-gray-900 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                                     {displayName
                                         ? displayName[0].toUpperCase()
                                         : userEmail?.[0]?.toUpperCase() ?? "?"}
@@ -190,7 +217,9 @@ export default function DashboardLayout({
             <div className="flex-1 flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-900">
                 {/* Mobile Header / Hamburger */}
                 <header className="flex items-center justify-between h-16 px-4 bg-white dark:bg-gray-900 border-b dark:border-gray-700 md:hidden">
-                    <span className="text-xl font-bold text-blue-600">MR-Fit</span>
+                    <div className="inline-flex rounded-xl bg-gray-900 px-3 py-2 dark:bg-white">
+                        <Logo variant="text" height={28} />
+                    </div>
                     <button
                         onClick={() => setIsMobileMenuOpen(true)}
                         className="text-gray-500 hover:text-gray-700 focus:outline-none"

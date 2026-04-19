@@ -99,7 +99,7 @@ export default function SignupPage() {
           value={email}
           autoComplete="email"
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-gray-900 focus:ring-gray-900 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
         />
       </div>
 
@@ -115,7 +115,7 @@ export default function SignupPage() {
           value={password}
           autoComplete="new-password"
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-gray-900 focus:ring-gray-900 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
         />
       </div>
 
@@ -131,7 +131,7 @@ export default function SignupPage() {
           value={confirm}
           autoComplete="new-password"
           onChange={(e) => setConfirm(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-gray-900 focus:ring-gray-900 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
         />
       </div>
 
@@ -143,7 +143,7 @@ export default function SignupPage() {
           id="securityQuestion"
           value={securityQuestion}
           onChange={(e) => setSecurityQuestion(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-gray-900 focus:ring-gray-900 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
         >
           <option>What was the name of your first pet?</option>
           <option>What city were you born in?</option>
@@ -163,23 +163,23 @@ export default function SignupPage() {
           required
           value={securityAnswer}
           onChange={(e) => setSecurityAnswer(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-gray-900 focus:ring-gray-900 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
         />
       </div>
 
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-md bg-indigo-600 py-2 px-4 text-white hover:bg-indigo-700 disabled:opacity-50 transition"
+        className="btn-brand w-full justify-center disabled:opacity-50"
       >
         {loading ? "Creating account..." : "Sign up"}
       </button>
 
       <p className="text-sm text-center text-gray-600 dark:text-gray-400">
         Already have an account?{" "}
-        <Link href="/login" className="text-indigo-600 hover:underline">
-          Sign in
-        </Link>
+          <Link href="/login" className="text-gray-900 hover:underline dark:text-gray-100">
+            Sign in
+          </Link>
       </p>
     </form>
   );

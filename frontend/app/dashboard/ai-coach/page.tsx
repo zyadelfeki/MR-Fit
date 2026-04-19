@@ -46,7 +46,7 @@ export default function AICoachPage() {
     const getWelcomeMessage = (name: string): Message => ({
         id: "welcome-1",
         role: "ai",
-        text: `Hi ${name === "there" ? "" : name}! I'm your MR-Fit AI Coach. Ask me anything about your workouts, exercises, or fitness goals.`,
+        text: `Hi ${name === "there" ? "" : name}! I'm your MR.FIT AI Coach. Ask me anything about your workouts, exercises, or fitness goals.`,
     });
 
     const enqueuePersistence = (role: "user" | "assistant", content: string) => {

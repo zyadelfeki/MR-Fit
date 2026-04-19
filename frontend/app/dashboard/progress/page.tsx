@@ -4,7 +4,7 @@ import pool from "@/lib/db";
 import LogWeightForm from "@/components/LogWeightForm";
 
 export const metadata = {
-    title: "Progress | MR-Fit",
+    title: "Progress | MR.FIT",
     description: "Track your fitness progress over time",
 };
 

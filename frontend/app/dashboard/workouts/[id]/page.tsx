@@ -153,7 +153,7 @@ export default function WorkoutDetailPage() {
         return (
             <div className="rounded-xl border border-gray-200 bg-white p-6 text-center dark:border-gray-700 dark:bg-gray-800">
                 <p className="text-gray-600 dark:text-gray-300">Workout not found.</p>
-                <Link href="/dashboard/workouts" className="mt-3 inline-block text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                <Link href="/dashboard/workouts" className="mt-3 inline-block text-sm font-medium text-gray-900 dark:text-gray-400">
                     Back to Workouts
                 </Link>
             </div>
@@ -164,7 +164,7 @@ export default function WorkoutDetailPage() {
         <div className="mx-auto max-w-5xl space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <Link href="/dashboard/workouts" className="text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">
+                    <Link href="/dashboard/workouts" className="text-sm text-gray-900 hover:text-gray-800 dark:text-gray-400">
                         ← Back to Workouts
                     </Link>
                     <h1 className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">{workout.title}</h1>
@@ -176,7 +176,7 @@ export default function WorkoutDetailPage() {
                 </div>
             </div>
 
-            <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-indigo-800 dark:border-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-200">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-indigo-800 dark:border-indigo-800 dark:bg-gray-800/60 dark:text-indigo-200">
                 <p className="font-semibold">Total Volume: {Math.round(totalVolume)}kg</p>
             </div>
 
@@ -226,7 +226,7 @@ export default function WorkoutDetailPage() {
                     <button
                         type="submit"
                         disabled={saving}
-                        className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-60"
+                        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-60"
                     >
                         {saving ? "Saving..." : "Add Exercise"}
                     </button>
@@ -280,3 +280,4 @@ export default function WorkoutDetailPage() {
         </div>
     );
 }
+

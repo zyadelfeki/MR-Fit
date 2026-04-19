@@ -3,9 +3,10 @@ import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 
 export const metadata: Metadata = {
-  title: { default: "MR-Fit", template: "%s | MR-Fit" },
+  title: { default: "MR.FIT", template: "%s | MR.FIT" },
   description:
-    "AI-powered fitness companion — workouts, nutrition, and personalized coaching",
+    "Your AI-powered fitness companion. Track workouts, nutrition, and get personalized coaching.",
+  icons: { icon: "/logo.jpg" },
 };
 
 export default function RootLayout({

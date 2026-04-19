@@ -236,7 +236,7 @@ export default function NutritionPage() {
             label: "Calories",
             total: summary.totals.calories,
             goal: summary.goals.calories,
-            colorClass: "bg-indigo-500",
+            colorClass: "bg-gray-500",
             unit: "",
         },
         {
@@ -307,7 +307,7 @@ export default function NutritionPage() {
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
                         placeholder="Search food..."
                     />
 
@@ -463,7 +463,7 @@ export default function NutritionPage() {
                             <p>No food logged today.</p>
                             <a
                                 href="#log-food-card"
-                                className="inline-flex rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-700"
+                                className="inline-flex rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-gray-800"
                             >
                                 Log your first meal
                             </a>
@@ -516,3 +516,4 @@ export default function NutritionPage() {
         </div>
     );
 }
+

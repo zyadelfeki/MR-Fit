@@ -89,7 +89,7 @@ export default function ForgotPasswordPage() {
       {success ? (
         <div className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-700">
           <p>Password reset! Sign in now.</p>
-          <Link href="/login" className="mt-2 inline-block text-indigo-600 hover:underline">
+          <Link href="/login" className="mt-2 inline-block text-gray-900 hover:underline">
             Go to Sign in
           </Link>
         </div>
@@ -107,7 +107,7 @@ export default function ForgotPasswordPage() {
               autoComplete="email"
               disabled={Boolean(question)}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-indigo-500 focus:ring-indigo-500 disabled:bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:disabled:bg-gray-700"
+              className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-gray-900 focus:ring-gray-900 disabled:bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:disabled:bg-gray-700"
             />
           </div>
 
@@ -130,7 +130,7 @@ export default function ForgotPasswordPage() {
                   required
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
-                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-gray-900 focus:ring-gray-900 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
                 />
               </div>
 
@@ -145,7 +145,7 @@ export default function ForgotPasswordPage() {
                   minLength={6}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-gray-900 focus:ring-gray-900 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
                 />
               </div>
 
@@ -160,7 +160,7 @@ export default function ForgotPasswordPage() {
                   minLength={6}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                  className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-gray-900 focus:ring-gray-900 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
                 />
               </div>
             </>
@@ -169,7 +169,7 @@ export default function ForgotPasswordPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-md bg-indigo-600 py-2 px-4 text-white hover:bg-indigo-700 disabled:opacity-50 transition"
+            className="btn-brand w-full justify-center disabled:opacity-50"
           >
             {loading
               ? "Please wait..."
@@ -180,12 +180,13 @@ export default function ForgotPasswordPage() {
 
           <p className="text-sm text-center text-gray-600 dark:text-gray-400">
             Remembered your password?{" "}
-            <Link href="/login" className="text-indigo-600 hover:underline">
-              Sign in
-            </Link>
+              <Link href="/login" className="text-gray-900 hover:underline dark:text-gray-100">
+                Sign in
+              </Link>
           </p>
         </>
       )}
     </form>
   );
 }
+
