@@ -15,19 +15,6 @@ const SMART_TRACKER_URL = process.env.SMART_TRACKER_URL ?? "http://localhost:800
 // }
 // Returns: { exercise: string, confidence: number, probabilities: Record<string, number> }
 
-async function isHealthy() {
-    const res = await fetch(`${SMART_TRACKER_URL}/health`, { method: "GET", cache: "no-store" });
-    return res.ok;
-}
-
-export async function HEAD() {
-    try {
-        return new NextResponse(null, { status: (await isHealthy()) ? 204 : 503 });
-    } catch {
-        return new NextResponse(null, { status: 503 });
-    }
-}
-
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
@@ -46,4 +33,8 @@ export async function POST(req: NextRequest) {
     } catch {
         return NextResponse.json({ error: "Failed to reach Smart Tracker service" }, { status: 503 });
     }
+}
+
+export async function HEAD() {
+    return new Response(null, { status: 200 });
 }
