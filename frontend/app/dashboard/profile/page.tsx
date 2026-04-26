@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 import { showToast } from "@/lib/toast";
 
-export const metadata = { title: "Profile | MR-Fit" };
-
 type Profile = {
   display_name: string | null;
   date_of_birth: string | null;
@@ -142,7 +140,6 @@ export default function ProfilePage() {
       {/* Avatar block */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
         <div className="flex items-center gap-5">
-          {/* Avatar circle */}
           <div className="flex-shrink-0 w-20 h-20 rounded-full bg-indigo-600 flex items-center justify-center shadow-md">
             <span className="text-2xl font-bold text-white">{initials}</span>
           </div>
@@ -189,7 +186,6 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Edit form */}
       <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 space-y-5">
         <h2 className="section-title">Edit Profile</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
