@@ -33,8 +33,10 @@ embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 def get_db():
     return psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
 
-SYSTEM_PROMPT = """You are MR-Fit AI Coach. You give personalized, specific workout and exercise recommendations.
-Keep responses concise (under 150 words). Always be encouraging. Use the user context provided."""
+SYSTEM_PROMPT = """You are MR-Fit AI Coach — a personal trainer and nutritionist.
+Always complete your full response. Never cut off mid-sentence.
+Be concise: keep replies under 200 words unless the user asks for detail.
+Be encouraging and reference the user's actual data when available."""
 
 class ChatMessage(BaseModel):
     role: str
@@ -164,7 +166,7 @@ Relevant Exercises from database:
     # --- Call Ollama ---
     reply_text = "I'm having trouble reaching the AI right now. Please try again."
     try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=180.0) as client:
             res = await client.post(
                 f"{OLLAMA_URL}/api/chat",
                 json={
@@ -173,7 +175,7 @@ Relevant Exercises from database:
                     "stream": False,
                     "options": {
                         "temperature": 0.7,
-                        "num_predict": 300
+                        "num_predict": -1
                     }
                 }
             )
