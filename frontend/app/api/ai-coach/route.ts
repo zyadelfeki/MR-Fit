@@ -7,6 +7,25 @@ type IncomingMessage = {
     content: string;
 };
 
+type Exercise = {
+    name: string;
+    muscle_group?: string;
+    difficulty?: string;
+};
+
+function parseAndStripExercises(reply: string): { cleanReply: string; exercises: Exercise[] } {
+    const match = reply.match(/EXERCISES_JSON:(\[.*?\])(?:\s*$)?/s);
+    if (!match) return { cleanReply: reply.trim(), exercises: [] };
+    let exercises: Exercise[] = [];
+    try {
+        exercises = JSON.parse(match[1]) as Exercise[];
+    } catch {
+        // malformed JSON — just strip the tag
+    }
+    const cleanReply = reply.replace(/EXERCISES_JSON:\[.*?\]/s, "").trim();
+    return { cleanReply, exercises };
+}
+
 export async function POST(req: Request) {
     try {
         const session = await auth();
@@ -190,9 +209,16 @@ export async function POST(req: Request) {
             );
         }
 
-        const data = await response.json();
-        return NextResponse.json(data);
-    } catch (error: any) {
+        const data = await response.json() as { reply?: string; exercises?: Exercise[] };
+        const rawReply = data.reply ?? "";
+
+        // Strip EXERCISES_JSON tag from reply text and parse into structured exercises
+        const { cleanReply, exercises: inlineExercises } = parseAndStripExercises(rawReply);
+        const dbExercises: Exercise[] = Array.isArray(data.exercises) ? data.exercises : [];
+        const mergedExercises = dbExercises.length > 0 ? dbExercises : inlineExercises;
+
+        return NextResponse.json({ reply: cleanReply, exercises: mergedExercises });
+    } catch (error: unknown) {
         console.error("AI Coach Route Error:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
