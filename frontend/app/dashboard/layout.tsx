@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import Toast from "@/components/Toast";
-import Logo from "@/components/Logo";
+import WelcomeBanner from "@/components/WelcomeBanner";
 
 // ─── Inline SVG icons (currentColor, 20×20) ──────────────────────────────
 const Icons: Record<string, JSX.Element> = {
@@ -89,14 +89,14 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { name: "Dashboard",     href: "/dashboard",              iconKey: "dashboard" },
-  { name: "Workouts",      href: "/dashboard/workouts",     iconKey: "workouts" },
-  { name: "Exercises",     href: "/dashboard/exercises",    iconKey: "exercises" },
-  { name: "Smart Tracker", href: "/dashboard/smart-tracker",iconKey: "tracker", badge: "NEW" },
-  { name: "Progress",      href: "/dashboard/progress",     iconKey: "progress" },
-  { name: "AI Coach",      href: "/dashboard/ai-coach",     iconKey: "ai" },
-  { name: "Nutrition",     href: "/dashboard/nutrition",    iconKey: "nutrition" },
-  { name: "Profile",       href: "/dashboard/profile",      iconKey: "profile" },
+  { name: "Dashboard",     href: "/dashboard",               iconKey: "dashboard" },
+  { name: "Workouts",      href: "/dashboard/workouts",      iconKey: "workouts" },
+  { name: "Exercises",     href: "/dashboard/exercises",     iconKey: "exercises" },
+  { name: "Smart Tracker", href: "/dashboard/smart-tracker", iconKey: "tracker", badge: "NEW" },
+  { name: "Progress",      href: "/dashboard/progress",      iconKey: "progress" },
+  { name: "AI Coach",      href: "/dashboard/ai-coach",      iconKey: "ai" },
+  { name: "Nutrition",     href: "/dashboard/nutrition",     iconKey: "nutrition" },
+  { name: "Profile",       href: "/dashboard/profile",       iconKey: "profile" },
 ];
 
 export default function DashboardLayout({
@@ -278,6 +278,9 @@ export default function DashboardLayout({
           }`}
         />
       </div>
+
+      {/* Welcome banner — shown once after onboarding via ?welcome=1 */}
+      <WelcomeBanner userName={firstName} />
 
       {/* Mobile overlay */}
       {isMobileMenuOpen && (
