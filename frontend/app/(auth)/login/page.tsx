@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 
+export const metadata = {
+  title: "Sign In | MR-Fit",
+};
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -27,7 +31,6 @@ export default function LoginPage() {
       if (result?.error) {
         setError("Invalid email or password");
       } else {
-        // Refresh server components to pick up the new session
         router.refresh();
         router.push("/dashboard");
       }
@@ -39,20 +42,28 @@ export default function LoginPage() {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-6 w-full max-w-sm"
-      aria-labelledby="login-heading"
-    >
-      <h1 id="login-heading" className="text-2xl font-semibold">
-        Sign in
-      </h1>
+    <form onSubmit={handleSubmit} className="space-y-5 w-full" aria-labelledby="login-heading">
+      <div className="space-y-1">
+        <h1 id="login-heading" className="text-2xl font-bold text-gray-900 dark:text-white">
+          Welcome back
+        </h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Sign in to your MR-Fit account</p>
+      </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="flex-shrink-0">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+            <line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <circle cx="12" cy="16" r="1" fill="currentColor" />
+          </svg>
+          {error}
+        </div>
+      )}
 
-      <div>
-        <label className="block text-sm font-medium" htmlFor="email">
-          Email
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="email">
+          Email address
         </label>
         <input
           id="email"
@@ -61,14 +72,20 @@ export default function LoginPage() {
           value={email}
           autoComplete="email"
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-gray-900 focus:ring-gray-900 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+          className="input-field"
+          placeholder="you@example.com"
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium" htmlFor="password">
-          Password
-        </label>
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="password">
+            Password
+          </label>
+          <Link href="/forgot-password" className="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">
+            Forgot password?
+          </Link>
+        </div>
         <input
           id="password"
           type="password"
@@ -76,28 +93,32 @@ export default function LoginPage() {
           value={password}
           autoComplete="current-password"
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:border-gray-900 focus:ring-gray-900 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+          className="input-field"
+          placeholder="••••••••"
         />
-        <div className="mt-2 text-right">
-          <Link href="/forgot-password" className="text-sm text-gray-900 hover:underline dark:text-gray-100">
-            Forgot password?
-          </Link>
-        </div>
       </div>
 
       <button
         type="submit"
         disabled={loading}
-        className="btn-brand w-full justify-center disabled:opacity-50"
+        className="btn-primary w-full justify-center py-2.5"
       >
-        {loading ? "Signing in..." : "Sign in"}
+        {loading ? (
+          <>
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            Signing in...
+          </>
+        ) : "Sign in"}
       </button>
 
-      <p className="text-sm text-center text-gray-600 dark:text-gray-400">
+      <p className="text-sm text-center text-gray-500 dark:text-gray-400">
         Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-gray-900 hover:underline dark:text-gray-100">
-            Sign up
-          </Link>
+        <Link href="/signup" className="font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">
+          Create one →
+        </Link>
       </p>
     </form>
   );
