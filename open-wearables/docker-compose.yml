@@ -1,0 +1,21 @@
+# Self-hosted Open Wearables service
+# Docs: https://github.com/the-momentum/open-wearables
+#
+# Usage:
+#   docker compose up -d
+#
+# Then configure your wearable provider (Apple Health, Garmin, Oura, Whoop)
+# in the Open Wearables dashboard at http://localhost:4000
+# and set the webhook URL to: http://host.docker.internal:8000/wearables/webhook
+
+version: "3.9"
+services:
+  open-wearables:
+    image: themomentum/open-wearables:latest
+    ports:
+      - "4000:4000"
+    environment:
+      WEBHOOK_URL: http://host.docker.internal:8000/wearables/webhook
+      WEBHOOK_SECRET: ${OPEN_WEARABLES_SECRET:-changeme}
+      PORT: 4000
+    restart: unless-stopped

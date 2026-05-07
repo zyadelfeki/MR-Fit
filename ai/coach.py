@@ -8,10 +8,14 @@ from typing import List, Optional
 from sentence_transformers import SentenceTransformer
 import httpx
 from dotenv import load_dotenv
+import json
 
 load_dotenv()
 
+from wearables import router as wearables_router
+
 app = FastAPI()
+app.include_router(wearables_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -51,6 +55,56 @@ class RecommendRequest(BaseModel):
 def health_check():
     return {"status": "ok", "ollama": OLLAMA_URL, "model": OLLAMA_MODEL}
 
+def _build_wearable_context(user_id: str, db) -> str:
+    """Reads latest wearable snapshots and formats them for the LLM prompt."""
+    try:
+        cur = db.cursor()
+        cur.execute("""
+            SELECT DISTINCT ON (data_type)
+                data_type, payload, recorded_at
+            FROM wearable_snapshots
+            WHERE user_id = %s::uuid
+            ORDER BY data_type, recorded_at DESC
+        """, (user_id,))
+        rows = cur.fetchall()
+        if not rows:
+            return ""
+
+        lines = ["\nWearable Data (from connected device):"]
+        for row in rows:
+            dtype = row["data_type"]
+            payload = row["payload"] if isinstance(row["payload"], dict) else json.loads(row["payload"])
+
+            if dtype == "daily":
+                lines.append(f"  Steps today: {payload.get('steps', 'N/A')}")
+                lines.append(f"  Calories burned: {payload.get('calories_burned', 'N/A')} kcal")
+                lines.append(f"  Active minutes: {payload.get('active_minutes', 'N/A')} min")
+                lines.append(f"  Distance: {payload.get('distance_km', 'N/A')} km")
+
+            elif dtype == "sleep":
+                lines.append(f"  Sleep duration: {payload.get('duration_hours', 'N/A')} hrs")
+                lines.append(f"  Sleep score: {payload.get('sleep_score', 'N/A')}")
+                lines.append(f"  Deep sleep: {payload.get('deep_sleep_hours', 'N/A')} hrs")
+                lines.append(f"  REM sleep: {payload.get('rem_sleep_hours', 'N/A')} hrs")
+
+            elif dtype == "body":
+                lines.append(f"  Heart rate (resting): {payload.get('resting_hr', 'N/A')} bpm")
+                lines.append(f"  HRV: {payload.get('hrv', 'N/A')} ms")
+                lines.append(f"  SpO2: {payload.get('spo2', 'N/A')}%")
+                lines.append(f"  Skin temp: {payload.get('skin_temp_celsius', 'N/A')} °C")
+
+            elif dtype == "activity":
+                lines.append(f"  Last activity: {payload.get('activity_type', 'N/A')}")
+                lines.append(f"  Duration: {payload.get('duration_minutes', 'N/A')} min")
+                lines.append(f"  Avg HR during activity: {payload.get('avg_hr', 'N/A')} bpm")
+                lines.append(f"  Calories: {payload.get('calories', 'N/A')} kcal")
+
+        return "\n".join(lines)
+    except Exception as e:
+        print(f"[coach] wearable context error: {e}")
+        db.rollback()
+        return ""
+
 @app.post("/recommend")
 async def recommend(req: RecommendRequest):
     user_message_text = req.message
@@ -63,17 +117,16 @@ async def recommend(req: RecommendRequest):
     if not user_message_text:
         raise HTTPException(status_code=400, detail="No message provided")
 
-    # --- DB context (all optional — failures degrade gracefully) ---
     profile = {}
     recent_workouts_str = "No recent workouts found."
     matched_exercises = []
+    wearable_context = ""
 
     db = None
     try:
         db = get_db()
         cur = db.cursor()
 
-        # 1. User profile
         try:
             cur.execute(
                 "SELECT display_name, fitness_goal, fitness_level, weight_kg FROM profiles WHERE user_id = %s::uuid",
@@ -85,7 +138,6 @@ async def recommend(req: RecommendRequest):
             print(f"[coach] profile fetch skipped: {e}")
             db.rollback()
 
-        # 2. Recent workout logs
         try:
             cur.execute("""
                 SELECT wl.sets_completed, wl.reps_completed, wl.weight_kg, wl.logged_at, e.name as exercise_name
@@ -107,7 +159,6 @@ async def recommend(req: RecommendRequest):
             print(f"[coach] workout logs fetch skipped: {e}")
             db.rollback()
 
-        # 3. pgvector similarity search (requires pgvector extension)
         try:
             query_embedding = embedding_model.encode(user_message_text).tolist()
             embedding_str = "[" + ",".join(map(str, query_embedding)) + "]"
@@ -126,13 +177,15 @@ async def recommend(req: RecommendRequest):
             print(f"[coach] pgvector search skipped: {e}")
             db.rollback()
 
+        # Pull wearable context
+        wearable_context = _build_wearable_context(req.user_id, db)
+
     except Exception as e:
         print(f"[coach] DB connection failed: {e}")
     finally:
         if db:
             db.close()
 
-    # --- Build context string ---
     exercises_text = "\n".join([
         f"- {ex['name']} ({ex['muscle_group']}, {ex['difficulty']}): {ex.get('description', '')}"
         for ex in matched_exercises
@@ -145,11 +198,11 @@ Level: {profile.get('fitness_level', 'Not specified')}
 Current Weight: {profile.get('weight_kg', 'Unknown')}kg
 
 {recent_workouts_str}
+{wearable_context}
 
 Relevant Exercises from database:
 {exercises_text}"""
 
-    # --- Build Ollama messages ---
     ollama_messages = [
         {"role": "system", "content": SYSTEM_PROMPT + "\n\n" + context_str}
     ]
@@ -163,7 +216,6 @@ Relevant Exercises from database:
     else:
         ollama_messages.append({"role": "user", "content": user_message_text})
 
-    # --- Call Ollama ---
     reply_text = "I'm having trouble reaching the AI right now. Please try again."
     try:
         async with httpx.AsyncClient(timeout=180.0) as client:
