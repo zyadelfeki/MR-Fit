@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -308,7 +308,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className={`h-full bg-indigo-500 transition-all duration-300 ${routeBarPhase === "idle" ? "w-0" : routeBarPhase === "loading" ? "w-2/3" : "w-full"}`} />
       </div>
 
-      <WelcomeBanner userName={firstName} />
+      <Suspense fallback={null}>
+        <WelcomeBanner name={firstName} />
+      </Suspense>
 
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-20 bg-black/50 md:hidden" onClick={() => setIsMobileMenuOpen(false)} aria-hidden="true" />

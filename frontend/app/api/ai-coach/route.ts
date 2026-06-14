@@ -14,7 +14,7 @@ type Exercise = {
 };
 
 function parseAndStripExercises(reply: string): { cleanReply: string; exercises: Exercise[] } {
-    const match = reply.match(/EXERCISES_JSON:(\[.*?\])(?:\s*$)?/s);
+    const match = reply.match(/EXERCISES_JSON:(\[[\s\S]*?\])(?:\s*$)?/);
     if (!match) return { cleanReply: reply.trim(), exercises: [] };
     let exercises: Exercise[] = [];
     try {
@@ -22,7 +22,7 @@ function parseAndStripExercises(reply: string): { cleanReply: string; exercises:
     } catch {
         // malformed JSON — just strip the tag
     }
-    const cleanReply = reply.replace(/EXERCISES_JSON:\[.*?\]/s, "").trim();
+    const cleanReply = reply.replace(/EXERCISES_JSON:\[[\s\S]*?\]/, "").trim();
     return { cleanReply, exercises };
 }
 
