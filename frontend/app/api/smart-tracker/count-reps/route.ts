@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const SMART_TRACKER_URL = process.env.SMART_TRACKER_URL ?? "http://localhost:8000";
+const SMART_TRACKER_URL = process.env.SMART_TRACKER_URL ?? "http://localhost:8001";
 
 // Smart Tracker /count-reps expects the same sensor window as /predict plus:
 // ?exercise=<slug>
