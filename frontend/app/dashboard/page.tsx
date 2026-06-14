@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import pool from "@/lib/db";
 import Link from "next/link";
+import MagicInput from "@/components/MagicInput";
 
 export const metadata = {
   title: "Dashboard | MR.FIT",
@@ -234,32 +235,41 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      {/* Today at a Glance */}
-      <div className="card rounded-2xl p-6">
-        <h2 className="section-title mb-5">Today at a Glance</h2>
-        <div className="space-y-4">
-          {[
-            { label: "Calories", current: caloriesToday, goal: calorieGoal, pct: caloriesPct, unit: "kcal", color: "bg-indigo-500" },
-            { label: "Protein",  current: proteinToday,  goal: proteinGoal,  pct: proteinPct,  unit: "g",    color: "bg-emerald-500" },
-            { label: "Weekly Workouts", current: displayWorkouts, goal: 4, pct: workoutPct, unit: "/ 4 sessions", color: "bg-orange-400" },
-          ].map((item) => (
-            <div key={item.label}>
-              <div className="mb-1.5 flex items-center justify-between text-sm">
-                <span className="font-medium text-gray-700 dark:text-gray-300">{item.label}</span>
-                <span className="tabular-nums text-gray-500 dark:text-gray-400">
-                  {item.label === "Weekly Workouts"
-                    ? `${item.current} ${item.unit}`
-                    : `${item.current} / ${item.goal} ${item.unit}`}
-                </span>
-              </div>
-              <div className="progress-track">
-                <div
-                  className={`progress-fill ${item.color}`}
-                  style={{ width: `${item.pct}%` }}
-                />
+      {/* Today at a Glance & Magic Input */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <MagicInput />
+        </div>
+        <div className="lg:col-span-1">
+          <div className="card rounded-2xl p-6 h-full flex flex-col justify-between">
+            <div>
+              <h2 className="section-title mb-5">Today at a Glance</h2>
+              <div className="space-y-4">
+                {[
+                  { label: "Calories", current: caloriesToday, goal: calorieGoal, pct: caloriesPct, unit: "kcal", color: "bg-indigo-500" },
+                  { label: "Protein",  current: proteinToday,  goal: proteinGoal,  pct: proteinPct,  unit: "g",    color: "bg-emerald-500" },
+                  { label: "Weekly Workouts", current: displayWorkouts, goal: 4, pct: workoutPct, unit: "/ 4 sessions", color: "bg-orange-400" },
+                ].map((item) => (
+                  <div key={item.label}>
+                    <div className="mb-1.5 flex items-center justify-between text-sm">
+                      <span className="font-medium text-gray-700 dark:text-gray-300">{item.label}</span>
+                      <span className="tabular-nums text-gray-500 dark:text-gray-400">
+                        {item.label === "Weekly Workouts"
+                          ? `${item.current} ${item.unit}`
+                          : `${item.current} / ${item.goal} ${item.unit}`}
+                      </span>
+                    </div>
+                    <div className="progress-track">
+                      <div
+                        className={`progress-fill ${item.color}`}
+                        style={{ width: `${item.pct}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
+          </div>
         </div>
       </div>
 
