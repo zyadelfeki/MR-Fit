@@ -1,18 +1,24 @@
 import os
 import psycopg2
 import psycopg2.extras
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from sentence_transformers import SentenceTransformer
 import httpx
 from dotenv import load_dotenv
 import json
+import logging
 
 load_dotenv()
 
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("mrfit.ai.coach")
+
 from wearables import router as wearables_router
+import gemini_service
 
 app = FastAPI()
 app.include_router(wearables_router)
@@ -51,9 +57,18 @@ class RecommendRequest(BaseModel):
     message: Optional[str] = None
     messages: Optional[List[ChatMessage]] = None
 
+class ParseEntryRequest(BaseModel):
+    text: str
+    prefill_exercise: Optional[str] = None
+
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "ollama": OLLAMA_URL, "model": OLLAMA_MODEL}
+    return {
+        "status": "ok",
+        "ollama": OLLAMA_URL,
+        "model": OLLAMA_MODEL,
+        "gemini_available": gemini_service.is_gemini_available()
+    }
 
 def _build_wearable_context(user_id: str, db) -> str:
     """Reads latest wearable snapshots and formats them for the LLM prompt."""
@@ -101,9 +116,78 @@ def _build_wearable_context(user_id: str, db) -> str:
 
         return "\n".join(lines)
     except Exception as e:
-        print(f"[coach] wearable context error: {e}")
+        logger.error(f"wearable context error: {e}")
         db.rollback()
         return ""
+
+async def parse_entry_ollama_fallback(text: str, prefill_exercise: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Ollama-based parsing fallback when Gemini is unavailable."""
+    prompt = f"""You are a structured parser for fitness and nutrition logs.
+User input: "{text}"
+Prefilled Exercise: "{prefill_exercise or 'None'}"
+
+Task: Extract all fitness or nutrition items from the input.
+Return ONLY a valid JSON list of objects:
+[
+  {{"type": "EXERCISE" | "NUTRITION", "name": "exercise or food name", "calories": calories_estimated_if_food_or_null, "sets": 1, "reps": reps_or_null, "weight": weight_kg_or_null}}
+]
+Rules:
+- For multi-set descriptions like "3 sets of 10", return 3 separate objects, one for each set.
+- Omit markdown, return only raw JSON.
+"""
+    try:
+        async with httpx.AsyncClient(timeout=45.0) as client:
+            res = await client.post(
+                f"{OLLAMA_URL}/api/generate",
+                json={
+                    "model": OLLAMA_MODEL,
+                    "prompt": prompt,
+                    "stream": False,
+                    "format": "json"
+                }
+            )
+            res.raise_for_status()
+            data = res.json()
+            raw_text = data.get("response", "").strip()
+            data_list = json.loads(raw_text)
+            
+            if not isinstance(data_list, list):
+                data_list = [data_list]
+                
+            parsed_items = []
+            for data in data_list:
+                if "type" not in data or data["type"] not in ("EXERCISE", "NUTRITION"):
+                    continue
+                if data.get("type") == "EXERCISE":
+                    s = max(data.get("sets") or 1, 1)
+                    r = max(data.get("reps") or 0, 0)
+                    w = max(data.get("weight") or 0.0, 0.0)
+                    data["volume"] = round(s * r * w, 2)
+                else:
+                    data["volume"] = None
+                parsed_items.append(data)
+            return parsed_items
+    except Exception as e:
+        logger.error(f"Ollama parse fallback failed: {e}")
+        raise RuntimeError(f"Ollama parse failed: {e}")
+
+@app.post("/parse-entry")
+async def parse_entry(req: ParseEntryRequest):
+    """Parses a natural-language fitness entry using Gemini, falling back to Ollama."""
+    if gemini_service.is_gemini_available():
+        try:
+            parsed = gemini_service.parse_magic_input(req.text, req.prefill_exercise)
+            return parsed
+        except Exception as e:
+            logger.error(f"Gemini parsing failed, trying Ollama: {e}")
+    
+    # Fallback to Ollama
+    try:
+        parsed = await parse_entry_ollama_fallback(req.text, req.prefill_exercise)
+        return parsed
+    except Exception as e:
+        logger.error(f"All parsing engines failed: {e}")
+        raise HTTPException(status_code=502, detail=f"Failed to parse entry: {e}")
 
 @app.post("/recommend")
 async def recommend(req: RecommendRequest):
@@ -135,7 +219,7 @@ async def recommend(req: RecommendRequest):
             row = cur.fetchone()
             profile = dict(row) if row else {}
         except Exception as e:
-            print(f"[coach] profile fetch skipped: {e}")
+            logger.error(f"profile fetch skipped: {e}")
             db.rollback()
 
         try:
@@ -156,7 +240,7 @@ async def recommend(req: RecommendRequest):
                     for log in logs
                 ])
         except Exception as e:
-            print(f"[coach] workout logs fetch skipped: {e}")
+            logger.error(f"workout logs fetch skipped: {e}")
             db.rollback()
 
         try:
@@ -174,14 +258,14 @@ async def recommend(req: RecommendRequest):
             for ex in matched_exercises:
                 ex.pop("distance", None)
         except Exception as e:
-            print(f"[coach] pgvector search skipped: {e}")
+            logger.error(f"pgvector search skipped: {e}")
             db.rollback()
 
         # Pull wearable context
         wearable_context = _build_wearable_context(req.user_id, db)
 
     except Exception as e:
-        print(f"[coach] DB connection failed: {e}")
+        logger.error(f"DB connection failed: {e}")
     finally:
         if db:
             db.close()
@@ -203,6 +287,42 @@ Current Weight: {profile.get('weight_kg', 'Unknown')}kg
 Relevant Exercises from database:
 {exercises_text}"""
 
+    # If Gemini is available, use it!
+    if gemini_service.is_gemini_available():
+        try:
+            logger.info("Generating coach advice using Gemini 2.5 Flash...")
+            
+            # Map req.messages to the list structure required by gemini_service
+            history_list = []
+            if req.messages:
+                for m in req.messages:
+                    if m.role == "system":
+                        continue
+                    history_list.append({
+                        "role": "coach" if m.role in ("ai", "assistant") else "user",
+                        "text": m.content
+                    })
+            
+            # Remove the last message from history since it's the current user_message_text
+            if history_list and history_list[-1]["role"] == "user":
+                history_list.pop()
+                
+            user_context = {
+                "period_days": 14,
+                "display_name": profile.get("display_name", "User"),
+                "fitness_goal": profile.get("fitness_goal", "Not specified"),
+                "fitness_level": profile.get("fitness_level", "Not specified"),
+                "weight_kg": float(profile.get("weight_kg", 0)) if profile.get("weight_kg") else 0.0,
+                "context_str": context_str
+            }
+            
+            res_gemini = gemini_service.ask_coach_gemini(user_message_text, user_context, history_list)
+            return {"reply": res_gemini.get("answer", ""), "exercises": matched_exercises}
+        except Exception as e:
+            logger.error(f"Gemini recommendation failed, falling back to Ollama: {e}")
+
+    # Ollama Fallback
+    logger.info("Generating coach advice using local Ollama fallback...")
     ollama_messages = [
         {"role": "system", "content": SYSTEM_PROMPT + "\n\n" + context_str}
     ]
@@ -235,6 +355,7 @@ Relevant Exercises from database:
             data = res.json()
             reply_text = data["message"]["content"]
     except Exception as e:
-        print(f"[coach] Ollama error: {e}")
+        logger.error(f"Ollama error: {e}")
+        raise HTTPException(status_code=502, detail=f"Ollama recommendation failed: {e}")
 
     return {"reply": reply_text, "exercises": matched_exercises}
