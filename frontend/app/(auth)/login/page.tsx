@@ -5,10 +5,6 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 
-export const metadata = {
-  title: "Sign In | MR-Fit",
-};
-
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
