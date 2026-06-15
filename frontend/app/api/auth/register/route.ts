@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import pool from "@/lib/db";
+import { withDb } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
@@ -23,20 +23,21 @@ export async function POST(req: Request) {
         const hashed = await bcrypt.hash(password, 12);
         const securityAnswerHash = await bcrypt.hash(securityAnswer.toLowerCase().trim(), 12);
 
-        const res = await pool.query(
-            "INSERT INTO users (email, password_hash, security_question, security_answer_hash) VALUES ($1, $2, $3, $4) RETURNING id, email",
-            [email, hashed, securityQuestion, securityAnswerHash]
-        );
-
-        const user = res.rows[0];
-
-        // Create empty profile row so the profile page doesn't fail
-        await pool.query("INSERT INTO profiles (user_id) VALUES ($1)", [user.id]);
+        const result = await withDb(async (client) => {
+            const res = await client.query(
+                "INSERT INTO users (email, password_hash, security_question, security_answer_hash) VALUES ($1, $2, $3, $4) RETURNING id, email",
+                [email, hashed, securityQuestion, securityAnswerHash]
+            );
+            const user = res.rows[0];
+            // Create empty profile row so the profile page doesn't fail
+            await client.query("INSERT INTO profiles (user_id) VALUES ($1)", [user.id]);
+            return user;
+        });
 
         return NextResponse.json({
             success: true,
-            user: { id: user.id, email: user.email },
-        });
+            user: { id: result.id, email: result.email },
+        }, { status: 201 });
     } catch (err: any) {
         // Unique violation = duplicate email
         if (err.code === "23505") {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { showToast } from "@/lib/toast";
+import { ResponsiveContainer, LineChart, Line, YAxis } from "recharts";
 
 type ExerciseOption = {
     label: string;
@@ -154,6 +155,28 @@ export default function SmartTrackerPage() {
     const [saving, setSaving] = useState(false);
     const [prediction, setPrediction] = useState<PredictionResult | null>(null);
     const [repCount, setRepCount] = useState<number | null>(null);
+
+    // Live scrolling sensor telemetry data
+    const [telemetry, setTelemetry] = useState<any[]>([]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setTelemetry((prev) => {
+                const nextVal = {
+                    time: Date.now(),
+                    accelerometer: running
+                        ? 9.8 + 5.2 * Math.sin(Date.now() / 150) + (Math.random() - 0.5) * 0.5
+                        : 9.8 + (Math.random() - 0.5) * 0.3,
+                    gyroscope: running
+                        ? 0.5 + 2.8 * Math.cos(Date.now() / 200) + (Math.random() - 0.5) * 0.4
+                        : 0.1 + (Math.random() - 0.5) * 0.05,
+                };
+                const sliceStart = prev.length > 35 ? 1 : 0;
+                return [...prev.slice(sliceStart), nextVal];
+            });
+        }, 85);
+        return () => clearInterval(interval);
+    }, [running]);
 
     const selectedExerciseOption = useMemo(
         () => EXERCISES.find((item) => item.slug === selectedExercise) ?? EXERCISES[0],
@@ -308,113 +331,145 @@ export default function SmartTrackerPage() {
                 </div>
             </div>
 
-            <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+            <section className="rounded-3xl border border-neutral-800 bg-[#161616] p-6 shadow-sm">
                 <div className="flex items-start justify-between gap-4">
                     <div>
-                        <p className="text-sm font-semibold uppercase tracking-[0.28em] text-gray-500 dark:text-gray-400">
+                        <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#FFB800]">
                             Demo Prediction
                         </p>
-                        <h2 className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+                        <h2 className="mt-2 text-2xl font-bold text-white font-heading">
                             Simulate a sensor window to see real-time exercise classification
                         </h2>
                     </div>
-                    <span className="rounded-full bg-emerald-400 px-3 py-1 text-xs font-bold uppercase tracking-[0.25em] text-gray-950">
+                    <span className="rounded-full bg-[#FFB800] px-3 py-1 text-xs font-bold uppercase tracking-[0.25em] text-black shrink-0">
                         New
                     </span>
                 </div>
 
-                <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
-                    {EXERCISES.map((exercise) => {
-                        const active = exercise.slug === selectedExercise;
-                        return (
-                            <button
-                                key={exercise.slug}
-                                type="button"
-                                onClick={() => setSelectedExercise(exercise.slug)}
-                                className={`rounded-xl border-2 p-4 text-center transition ${
-                                    active
-                                        ? "border-gray-900 bg-gray-900 text-white"
-                                        : "border-gray-200 bg-white hover:border-gray-400 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
-                                }`}
-                            >
-                                <div className="text-2xl" aria-hidden="true">
-                                    {exercise.emoji}
-                                </div>
-                                <div className="mt-2 text-sm font-semibold">{exercise.label}</div>
-                            </button>
-                        );
-                    })}
-                </div>
-
-                <div className="mt-6 flex flex-wrap items-center gap-3">
-                    {INTENSITIES.map((item) => {
-                        const active = item.label === intensity;
-                        return (
-                            <button
-                                key={item.label}
-                                type="button"
-                                onClick={() => setIntensity(item.label)}
-                                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                                    active
-                                        ? "bg-gray-900 text-white"
-                                        : "border border-gray-300 bg-white text-gray-700 hover:border-gray-500 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300"
-                                }`}
-                            >
-                                {item.label} ({item.reps} reps)
-                            </button>
-                        );
-                    })}
-                </div>
-
-                <button type="button" className="btn-brand mt-6 w-full justify-center" onClick={() => void handleRunPrediction()} disabled={running}>
-                    {running ? (
-                        <span className="flex items-center gap-2">
-                            <span className="h-2 w-2 animate-bounce rounded-full bg-white [animation-delay:-0.2s]" />
-                            <span className="h-2 w-2 animate-bounce rounded-full bg-white [animation-delay:-0.1s]" />
-                            <span className="h-2 w-2 animate-bounce rounded-full bg-white" />
-                        </span>
-                    ) : (
-                        "Run Prediction"
-                    )}
-                </button>
-
-                {prediction && repCount != null ? (
-                    <div className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 p-6 shadow-sm transition-all duration-300 dark:border-gray-700 dark:bg-gray-800">
-                        <p className="text-sm font-semibold uppercase tracking-[0.25em] text-gray-500 dark:text-gray-400">
-                            Exercise Detected
-                        </p>
-                        <h3 className="mt-3 text-3xl font-black tracking-tight text-gray-900 dark:text-white">
-                            {prediction.exercise.toUpperCase()}
-                        </h3>
-
-                        <div className="mt-5">
-                            <div className="mb-2 flex items-center justify-between text-sm font-medium text-gray-600 dark:text-gray-300">
-                                <span>Confidence</span>
-                                <span>{confidencePercent}%</span>
-                            </div>
-                            <div className="h-3 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                                <div
-                                    className={`h-full rounded-full transition-all duration-500 ${confidenceColor(confidencePercent)}`}
-                                    style={{ width: `${confidencePercent}%` }}
-                                />
-                            </div>
+                <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    {/* Controls Column */}
+                    <div className="lg:col-span-7 space-y-6">
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                            {EXERCISES.map((exercise) => {
+                                const active = exercise.slug === selectedExercise;
+                                return (
+                                    <button
+                                        key={exercise.slug}
+                                        type="button"
+                                        onClick={() => setSelectedExercise(exercise.slug)}
+                                        className={`rounded-xl border-2 p-3 text-center transition ${
+                                            active
+                                                ? "border-[#FFB800] bg-neutral-900 text-white"
+                                                : "border-neutral-800 bg-neutral-900/50 hover:border-neutral-700 text-neutral-300"
+                                        }`}
+                                    >
+                                        <div className="text-xl" aria-hidden="true">
+                                            {exercise.emoji}
+                                        </div>
+                                        <div className="mt-1 text-xs font-bold">{exercise.label}</div>
+                                    </button>
+                                );
+                            })}
                         </div>
 
-                        <div className="mt-5 rounded-xl bg-white p-4 shadow-sm dark:bg-gray-900">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Repetitions Counted</p>
-                            <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{repCount}</p>
+                        <div className="flex flex-wrap items-center gap-3">
+                            {INTENSITIES.map((item) => {
+                                const active = item.label === intensity;
+                                return (
+                                    <button
+                                        key={item.label}
+                                        type="button"
+                                        onClick={() => setIntensity(item.label)}
+                                        className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
+                                            active
+                                                ? "bg-[#FFB800] text-black"
+                                                : "border border-neutral-800 bg-neutral-900 text-neutral-300 hover:border-neutral-700"
+                                        }`}
+                                    >
+                                        {item.label} ({item.reps} reps)
+                                    </button>
+                                );
+                            })}
                         </div>
 
-                        <button
-                            type="button"
-                            onClick={() => void handleSaveToWorkoutLog()}
-                            className="btn-brand mt-5 w-full justify-center disabled:opacity-60"
-                            disabled={saving}
-                        >
-                            {saving ? "Saving..." : "Save to Workout Log"}
+                        <button type="button" className="btn-primary bg-[#FFB800] text-black w-full justify-center py-2.5 font-bold rounded-xl" onClick={() => void handleRunPrediction()} disabled={running}>
+                            {running ? (
+                                <span className="flex items-center gap-2">
+                                    <span className="h-2 w-2 animate-bounce rounded-full bg-black [animation-delay:-0.2s]" />
+                                    <span className="h-2 w-2 animate-bounce rounded-full bg-black [animation-delay:-0.1s]" />
+                                    <span className="h-2 w-2 animate-bounce rounded-full bg-black" />
+                                </span>
+                            ) : (
+                                "Run Prediction"
+                            )}
                         </button>
+
+                        {prediction && repCount != null ? (
+                            <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 shadow-sm transition-all duration-300">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-neutral-400">
+                                    Exercise Detected
+                                </p>
+                                <h3 className="mt-2 text-2xl font-black tracking-tight text-[#FFB800] font-heading">
+                                    {prediction.exercise.toUpperCase()}
+                                </h3>
+
+                                <div className="mt-4">
+                                    <div className="mb-1.5 flex items-center justify-between text-xs font-medium text-neutral-300">
+                                        <span>Confidence</span>
+                                        <span>{confidencePercent}%</span>
+                                    </div>
+                                    <div className="h-2.5 overflow-hidden rounded-full bg-neutral-800">
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-500 ${confidenceColor(confidencePercent)}`}
+                                            style={{ width: `${confidencePercent}%` }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 rounded-xl bg-neutral-950 border border-neutral-800 p-3 flex justify-between items-center">
+                                    <span className="text-xs text-neutral-400">Repetitions Counted</span>
+                                    <span className="text-xl font-bold text-white">{repCount}</span>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => void handleSaveToWorkoutLog()}
+                                    className="btn-primary bg-[#FFB800] text-black mt-4 w-full justify-center py-2 text-xs font-bold disabled:opacity-60 rounded-lg"
+                                    disabled={saving}
+                                >
+                                    {saving ? "Saving..." : "Save to Workout Log"}
+                                </button>
+                            </div>
+                        ) : null}
                     </div>
-                ) : null}
+
+                    {/* Live Telemetry Graph Column */}
+                    <div className="lg:col-span-5 flex flex-col justify-between rounded-2xl border border-neutral-800 bg-neutral-900/50 p-5 h-[340px] lg:h-auto">
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-neutral-400 mb-4">
+                                Live Sensor Stream (Wrist IMU)
+                            </p>
+                            <div className="h-44 w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={telemetry} margin={{ top: 5, right: 5, left: -30, bottom: 0 }}>
+                                        <YAxis domain={[0, 20]} stroke="#525252" fontSize={9} tickLine={false} />
+                                        <Line type="monotone" dataKey="accelerometer" stroke="#FFB800" strokeWidth={2} dot={false} isAnimationActive={false} />
+                                        <Line type="monotone" dataKey="gyroscope" stroke="#3b82f6" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                        
+                        <div className="flex justify-between text-[10px] text-neutral-500 border-t border-neutral-800 pt-3">
+                            <span className="flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full bg-[#FFB800]" /> Accelerometer (g-force)
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full bg-blue-500" /> Gyroscope (rad/s)
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <section className="grid gap-6 md:grid-cols-3">

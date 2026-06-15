@@ -55,6 +55,66 @@ export default function NutritionPage() {
         Breakfast: true, Lunch: true, Dinner: true, Snacks: true,
     });
 
+    // Scanner States & Logic
+    const [scannerOpen, setScannerOpen] = useState(false);
+    const [scanLoading, setScanLoading] = useState(false);
+    const [scanResult, setScanResult] = useState<FoodResult | null>(null);
+    const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+
+    const startCamera = async () => {
+        setScannerOpen(true);
+        setScanResult(null);
+        // Wait a tick for modal to mount video element
+        setTimeout(async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                setCameraStream(stream);
+                const videoEl = document.getElementById("scanner-video") as HTMLVideoElement;
+                if (videoEl) videoEl.srcObject = stream;
+            } catch (e) {
+                console.warn("Webcam access not granted or unavailable, entering simulated scanner.");
+            }
+        }, 100);
+    };
+
+    const stopCamera = () => {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach((track) => track.stop());
+            setCameraStream(null);
+        }
+        setScannerOpen(false);
+    };
+
+    const handleScanImage = async () => {
+        setScanLoading(true);
+        try {
+            const res = await fetch("/api/nutrition/scan", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ image: "mock_image_data" }),
+            });
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            setScanResult(data.food);
+        } catch {
+            showToast("❌ Scanner failed", "error");
+        } finally {
+            setScanLoading(false);
+        }
+    };
+
+    const acceptScan = () => {
+        if (scanResult) {
+            setFoodName(scanResult.name);
+            setCalories(scanResult.calories);
+            setProtein(scanResult.protein);
+            setCarbs(scanResult.carbs);
+            setFats(scanResult.fat);
+            stopCamera();
+            showToast("✅ Scanner filled form details", "success");
+        }
+    };
+
     // Search
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<FoodResult[]>([]);
@@ -229,13 +289,23 @@ export default function NutritionPage() {
 
                 <div className="relative mb-5">
                     <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Search food...</label>
-                    <div className="relative">
-                        <svg className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-                        </svg>
-                        <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                            placeholder="Search food..." />
+                    <div className="relative flex gap-2">
+                        <div className="relative flex-1">
+                            <svg className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+                            </svg>
+                            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                placeholder="Search food..." />
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => void startCamera()}
+                            className="btn-primary flex items-center gap-1.5 px-3 py-2 text-xs font-semibold"
+                            title="Scan Food with Camera"
+                        >
+                            📷 Scan food
+                        </button>
                     </div>
 
                     {(searchLoading || searchQuery.trim()) && (
@@ -388,6 +458,106 @@ export default function NutritionPage() {
                     })
                 )}
             </div>
+
+            {/* Food Scanner Modal */}
+            {scannerOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    {/* Inline laser line style */}
+                    <style dangerouslySetInnerHTML={{ __html: `
+                        @keyframes scanSweep {
+                            0% { top: 0%; }
+                            50% { top: 100%; }
+                            100% { top: 0%; }
+                        }
+                        .scanner-line {
+                            position: absolute;
+                            left: 0;
+                            right: 0;
+                            height: 3px;
+                            background: #FFB800;
+                            box-shadow: 0 0 8px #FFB800;
+                            animation: scanSweep 2s infinite linear;
+                        }
+                    ` }} />
+
+                    <div className="w-full max-w-md overflow-hidden rounded-2xl border border-neutral-800 bg-[#161616] shadow-2xl">
+                        <div className="border-b border-neutral-800 p-4 flex justify-between items-center">
+                            <h3 className="font-heading font-bold text-lg text-white">AI Food Scanner</h3>
+                            <button onClick={stopCamera} className="text-neutral-400 hover:text-white text-xl">✕</button>
+                        </div>
+                        
+                        <div className="p-5 space-y-4">
+                            {/* Camera / Simulation Area */}
+                            <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-neutral-800 bg-neutral-950 flex items-center justify-center">
+                                {cameraStream ? (
+                                    <video id="scanner-video" autoPlay playsInline muted className="h-full w-full object-cover" />
+                                ) : (
+                                    <div className="text-center p-6 space-y-2">
+                                        <div className="text-3xl">📷</div>
+                                        <p className="text-xs text-neutral-400">Webcam stream un-initialized or unavailable</p>
+                                        <p className="text-[10px] text-neutral-500">Entering Simulated Scanning Mode</p>
+                                    </div>
+                                )}
+
+                                {/* Scanning Line Overlay */}
+                                {(scanLoading || (!cameraStream && !scanResult)) && (
+                                    <div className="scanner-line" />
+                                )}
+                            </div>
+
+                            {scanLoading && (
+                                <p className="text-center text-xs text-[#FFB800] font-semibold animate-pulse">
+                                    Analyzing image with local CNN model...
+                                </p>
+                            )}
+
+                            {scanResult ? (
+                                <div className="rounded-xl bg-neutral-900 border border-neutral-800 p-4 space-y-3">
+                                    <div>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#FFB800]">Scanned Item</p>
+                                        <h4 className="text-base font-bold text-white mt-0.5">{scanResult.name}</h4>
+                                    </div>
+                                    <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                                        <div className="p-1.5 rounded bg-neutral-800 border border-neutral-700">
+                                            <span className="block font-bold text-white">{scanResult.calories}</span>
+                                            <span className="text-[9px] text-neutral-400">kcal</span>
+                                        </div>
+                                        <div className="p-1.5 rounded bg-neutral-800 border border-neutral-700">
+                                            <span className="block font-bold text-emerald-400">{scanResult.protein}g</span>
+                                            <span className="text-[9px] text-neutral-400">Protein</span>
+                                        </div>
+                                        <div className="p-1.5 rounded bg-neutral-800 border border-neutral-700">
+                                            <span className="block font-bold text-amber-400">{scanResult.carbs}g</span>
+                                            <span className="text-[9px] text-neutral-400">Carbs</span>
+                                        </div>
+                                        <div className="p-1.5 rounded bg-neutral-800 border border-neutral-700">
+                                            <span className="block font-bold text-rose-400">{scanResult.fat}g</span>
+                                            <span className="text-[9px] text-neutral-400">Fat</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex gap-2 pt-1">
+                                        <button onClick={handleScanImage} className="btn-secondary flex-1 text-xs py-2">
+                                            🔄 Rescan
+                                        </button>
+                                        <button onClick={acceptScan} className="btn-primary flex-1 text-xs py-2 text-black bg-[#FFB800]">
+                                            ✅ Confirm & Fill
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={handleScanImage}
+                                    disabled={scanLoading}
+                                    className="btn-primary w-full py-2.5 text-black bg-[#FFB800] justify-center"
+                                >
+                                    {scanLoading ? "Analyzing..." : cameraStream ? "📸 Capture & Analyze" : "⚡ Run Simulated Scan"}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

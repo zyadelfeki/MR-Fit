@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Logo from "@/components/Logo";
+import AnimatedStats from "@/components/AnimatedStats";
 
 export const metadata: Metadata = {
   title: "MR.FIT — AI Fitness Companion",
@@ -125,19 +126,8 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {/* Stats row */}
-          <div className="mt-12 flex flex-wrap justify-center gap-8 text-sm text-gray-500 dark:text-gray-400">
-            {[
-              ["6", "Core Modules"],
-              ["AI-Powered", "Local Coach"],
-              ["100%", "Private & Free"],
-            ].map(([value, label]) => (
-              <div key={label} className="flex flex-col items-center gap-0.5">
-                <span className="text-lg font-bold text-gray-900 dark:text-white">{value}</span>
-                <span>{label}</span>
-              </div>
-            ))}
-          </div>
+          {/* Animated Stats Row */}
+          <AnimatedStats />
         </div>
       </section>
 

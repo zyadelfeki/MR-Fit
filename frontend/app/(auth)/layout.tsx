@@ -7,33 +7,29 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="mx-auto grid min-h-screen max-w-6xl md:grid-cols-[1.1fr_0.9fr]">
 
         {/* Brand Panel — desktop only */}
-        <aside className="hidden md:flex flex-col items-center justify-center bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-700 px-10 py-16 text-white relative overflow-hidden">
-          {/* Background pattern */}
-          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px), radial-gradient(circle at 50% 80%, white 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
+        {/* Brand Panel — desktop only */}
+        <aside className="hidden md:flex flex-col items-center justify-center bg-[#0D0D0D] border-r border-[#262626] px-10 py-16 text-white relative overflow-hidden">
+          {/* Subtle gold grid lines pattern */}
+          <div 
+            className="absolute inset-0 opacity-[0.04]" 
+            style={{ 
+              backgroundImage: "linear-gradient(to right, #FFB800 1px, transparent 1px), linear-gradient(to bottom, #FFB800 1px, transparent 1px)", 
+              backgroundSize: "40px 40px" 
+            }} 
+          />
 
           <div className="relative z-10 max-w-sm space-y-8">
             {/* Logo */}
-            <div className="inline-flex items-center gap-3">
-              <div className="rounded-xl bg-white/20 p-2.5">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-label="MR-Fit logo" className="text-white">
-                  <circle cx="4" cy="12" r="2.5" stroke="currentColor" strokeWidth="2" />
-                  <circle cx="20" cy="12" r="2.5" stroke="currentColor" strokeWidth="2" />
-                  <line x1="6.5" y1="12" x2="17.5" y2="12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-                  <circle cx="8" cy="12" r="3.5" stroke="currentColor" strokeWidth="2" />
-                  <circle cx="16" cy="12" r="3.5" stroke="currentColor" strokeWidth="2" />
-                </svg>
-              </div>
-              <span className="text-2xl font-bold tracking-tight">MR-Fit</span>
-            </div>
+            <Logo variant="full" height={44} />
 
             <div className="space-y-3">
-              <p className="text-sm font-semibold uppercase tracking-[0.28em] text-indigo-200">
-                Smart Training
+              <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#FFB800]">
+                TRAIN SMARTER. STRIKE HARDER.
               </p>
-              <p className="text-2xl font-semibold leading-snug">
-                Workouts, nutrition, and AI coaching in one place.
+              <p className="text-2xl font-semibold leading-snug font-heading">
+                WORKOUTS, NUTRITION, AND AI COACHING IN ONE PLACE.
               </p>
-              <p className="text-sm leading-6 text-indigo-100">
+              <p className="text-sm leading-6 text-neutral-400">
                 Build momentum with an AI coach, precise logs, and progress
                 analytics that keep your sessions moving.
               </p>
@@ -47,8 +43,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
                 "AI coach powered by local LLM",
                 "Progress charts & analytics",
               ].map((item) => (
-                <li key={item} className="flex items-center gap-3 text-sm text-indigo-100">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 text-green-300">
+                <li key={item} className="flex items-center gap-3 text-sm text-neutral-300">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 text-[#FFB800]">
                     <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   {item}
@@ -63,16 +59,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl dark:bg-gray-900 dark:shadow-black/20">
             {/* Mobile logo */}
             <div className="mb-6 flex justify-center md:hidden">
-              <div className="flex items-center gap-2">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-indigo-600">
-                  <circle cx="4" cy="12" r="2.5" stroke="currentColor" strokeWidth="2" />
-                  <circle cx="20" cy="12" r="2.5" stroke="currentColor" strokeWidth="2" />
-                  <line x1="6.5" y1="12" x2="17.5" y2="12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-                  <circle cx="8" cy="12" r="3.5" stroke="currentColor" strokeWidth="2" />
-                  <circle cx="16" cy="12" r="3.5" stroke="currentColor" strokeWidth="2" />
-                </svg>
-                <span className="text-xl font-bold text-gray-900 dark:text-white">MR-Fit</span>
-              </div>
+              <Logo variant="full" height={36} />
             </div>
             {children}
           </div>

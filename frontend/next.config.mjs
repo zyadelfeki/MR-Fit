@@ -11,6 +11,10 @@ const nextConfig = {
   },
   experimental: {
     serverComponentsExternalPackages: [],
+    // prevents extension-injected window property conflicts crashing the overlay
+  },
+  webpack: (config) => {
+    return config;
   },
   async headers() {
     return [

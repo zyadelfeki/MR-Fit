@@ -80,6 +80,18 @@ const Icons: Record<string, JSX.Element> = {
       <polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
     </svg>
   ),
+  camera: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
+  ),
+  recovery: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  ),
 };
 
 type NavItem = { name: string; href: string; iconKey: string; badge?: string; proOnly?: boolean };
@@ -88,10 +100,12 @@ const navItems: NavItem[] = [
   { name: "Dashboard",     href: "/dashboard",               iconKey: "dashboard" },
   { name: "Workouts",      href: "/dashboard/workouts",      iconKey: "workouts" },
   { name: "Exercises",     href: "/dashboard/exercises",     iconKey: "exercises" },
+  { name: "Form Analysis", href: "/dashboard/form-analysis",  iconKey: "camera", badge: "ML" },
   { name: "Smart Tracker", href: "/dashboard/smart-tracker", iconKey: "tracker", badge: "NEW" },
   { name: "Progress",      href: "/dashboard/progress",      iconKey: "progress" },
   { name: "AI Coach",      href: "/dashboard/ai-coach",      iconKey: "ai",       proOnly: true },
   { name: "Nutrition",     href: "/dashboard/nutrition",     iconKey: "nutrition" },
+  { name: "Recovery Engine", href: "/dashboard/recovery",    iconKey: "recovery", badge: "AI" },
   { name: "Wearables",     href: "/dashboard/wearables",     iconKey: "wearables", proOnly: true },
   { name: "Profile",       href: "/dashboard/profile",       iconKey: "profile" },
 ];

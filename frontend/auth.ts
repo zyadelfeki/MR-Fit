@@ -11,34 +11,39 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 password: { label: "Password", type: "password" },
             },
             async authorize(credentials) {
-                if (!credentials?.email || !credentials?.password) return null;
+                try {
+                    if (!credentials?.email || !credentials?.password) return null;
 
-                const bcrypt = await import("bcryptjs");
-                const db = createAdminClient();
+                    const bcrypt = await import("bcryptjs");
+                    const db = createAdminClient();
 
-                // Use LEFT JOIN so login works even if profile doesn't exist yet
-                const res = await db.query(
-                    `SELECT u.id, u.email, u.password_hash, p.display_name
-           FROM users u
-           LEFT JOIN profiles p ON p.user_id = u.id
-           WHERE u.email = $1`,
-                    [credentials.email]
-                );
+                    // Use LEFT JOIN so login works even if profile doesn't exist yet
+                    const res = await db.query(
+                        `SELECT u.id, u.email, u.password_hash, p.display_name
+               FROM users u
+               LEFT JOIN profiles p ON p.user_id = u.id
+               WHERE u.email = $1`,
+                        [credentials.email]
+                    );
 
-                const user = res.rows[0];
-                if (!user) return null;
+                    const user = res.rows[0];
+                    if (!user) return null;
 
-                const valid = await bcrypt.compare(
-                    credentials.password as string,
-                    user.password_hash
-                );
-                if (!valid) return null;
+                    const valid = await bcrypt.compare(
+                        credentials.password as string,
+                        user.password_hash
+                    );
+                    if (!valid) return null;
 
-                return {
-                    id: user.id,
-                    email: user.email,
-                    name: user.display_name ?? null,
-                };
+                    return {
+                        id: user.id,
+                        email: user.email,
+                        name: user.display_name ?? null,
+                    };
+                } catch (err) {
+                    console.error("[Auth] DB error:", err);
+                    throw new Error("Database unavailable");
+                }
             },
         }),
     ],
