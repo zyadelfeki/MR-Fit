@@ -2,6 +2,8 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import pool from "@/lib/db";
 import Link from "next/link";
+import { Calendar, Clock, Dumbbell, ClipboardList, Plus, ChevronRight } from "lucide-react";
+import RevealOnScroll from "@/components/RevealOnScroll";
 
 export const metadata = {
   title: "My Workouts | MR-Fit",
@@ -41,11 +43,11 @@ export default async function WorkoutsPage() {
   };
 
   const typeBadgeClass: Record<string, string> = {
-    Strength: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
-    Cardio: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-    Flexibility: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-    HIIT: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
-    General: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300",
+    Strength: "bg-[#FFB800]/10 text-[#FFB800] border border-[#FFB800]/20",
+    Cardio: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
+    Flexibility: "bg-purple-500/10 text-purple-400 border border-purple-500/20",
+    HIIT: "bg-red-500/10 text-red-400 border border-red-500/20",
+    General: "bg-neutral-800 text-neutral-300 border border-neutral-700",
   };
 
   const formatDate = (d: string | null) => {
@@ -66,20 +68,16 @@ export default async function WorkoutsPage() {
         <div className="flex items-center gap-2">
           <Link
             href="/dashboard/workouts/templates"
-            className="flex items-center gap-2 rounded-xl border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            className="flex items-center gap-1.5 rounded-xl border border-neutral-800 bg-[#161616] px-4 py-2 text-sm font-medium text-neutral-300 hover:bg-neutral-900 hover:text-white transition-colors"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <ClipboardList className="h-4 w-4" />
             Templates
           </Link>
           <Link
             href="/dashboard/workouts/new"
-            className="btn-primary"
+            className="btn-primary bg-[#FFB800] text-black hover:shadow-[0_0_15px_rgba(255,184,0,0.25)] flex items-center gap-1.5"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-            </svg>
+            <Plus className="h-4 w-4" />
             Log Workout
           </Link>
         </div>
@@ -87,40 +85,34 @@ export default async function WorkoutsPage() {
 
       {!workouts || workouts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center mb-4">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="text-indigo-400">
-              <circle cx="4" cy="12" r="2.5" stroke="currentColor" strokeWidth="2" />
-              <circle cx="20" cy="12" r="2.5" stroke="currentColor" strokeWidth="2" />
-              <line x1="6.5" y1="12" x2="17.5" y2="12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-              <circle cx="8" cy="12" r="3.5" stroke="currentColor" strokeWidth="2" />
-              <circle cx="16" cy="12" r="3.5" stroke="currentColor" strokeWidth="2" />
-            </svg>
+          <div className="w-16 h-16 rounded-2xl bg-[#FFB800]/5 flex items-center justify-center mb-4 border border-[#FFB800]/10">
+            <Dumbbell className="h-8 w-8 text-[#FFB800]" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-1">
+          <h3 className="text-lg font-semibold text-gray-750 dark:text-neutral-300 mb-1">
             No workouts logged yet
           </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-xs">
+          <p className="text-sm text-gray-500 dark:text-gray-450 mb-6 max-w-xs">
             Choose a template or create your first workout from scratch.
           </p>
           <div className="flex items-center gap-3">
-            <Link href="/dashboard/workouts/new" className="btn-primary">
+            <Link href="/dashboard/workouts/new" className="btn-primary bg-[#FFB800] text-black">
               Log your first workout
             </Link>
             <Link href="/dashboard/workouts/templates"
-              className="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              className="px-4 py-2 rounded-xl border border-neutral-800 bg-neutral-900 text-sm font-medium text-neutral-300 hover:bg-neutral-850 hover:text-white transition-colors">
               Browse Templates
             </Link>
           </div>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <RevealOnScroll className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {workouts.map((workout) => {
             const workoutType = getWorkoutType(workout.title);
             return (
               <div key={workout.id}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 hover:shadow-md transition-shadow flex flex-col gap-3">
+                className="bg-[#161616] rounded-xl border border-neutral-800 p-5 hover:border-neutral-700 transition-all hover:scale-[1.02] flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-base font-semibold text-gray-900 dark:text-white leading-snug">
+                  <h3 className="text-base font-semibold text-white leading-snug">
                     {workout.title}
                   </h3>
                   <span className={`flex-shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full ${typeBadgeClass[workoutType]}`}>
@@ -128,20 +120,14 @@ export default async function WorkoutsPage() {
                   </span>
                 </div>
 
-                <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                <div className="flex items-center gap-4 text-xs text-neutral-400">
                   <span className="flex items-center gap-1">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                      <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2" />
-                      <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
+                    <Calendar className="h-3.5 w-3.5 text-neutral-500" />
                     {formatDate(workout.scheduled_at ?? workout.created_at)}
                   </span>
                   {workout.duration_min && (
                     <span className="flex items-center gap-1">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                        <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                      </svg>
+                      <Clock className="h-3.5 w-3.5 text-neutral-500" />
                       {workout.duration_min} min
                     </span>
                   )}
@@ -149,17 +135,15 @@ export default async function WorkoutsPage() {
 
                 <Link
                   href={`/dashboard/workouts/${workout.id}`}
-                  className="mt-auto flex items-center justify-between w-full rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                  className="mt-auto flex items-center justify-between w-full rounded-lg bg-neutral-900/60 hover:bg-[#FFB800]/10 px-3 py-2 text-sm font-medium text-neutral-300 hover:text-[#FFB800] border border-neutral-800 hover:border-[#FFB800]/20 transition-all"
                 >
                   View Details
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <ChevronRight className="h-4 w-4" />
                 </Link>
               </div>
             );
           })}
-        </div>
+        </RevealOnScroll>
       )}
     </div>
   );

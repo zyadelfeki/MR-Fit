@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { showToast } from "@/lib/toast";
+import { ArrowLeft, Plus, Trash2, Play, Save, ClipboardList, AlertCircle, Loader2 } from "lucide-react";
+import RevealOnScroll from "@/components/RevealOnScroll";
 
 type TemplateExercise = {
     name: string;
@@ -49,7 +51,7 @@ export default function WorkoutTemplatesPage() {
 
             setTemplates(Array.isArray(data.templates) ? data.templates : []);
         } catch {
-            showToast("❌ Something went wrong. Please try again.", "error");
+            showToast("Something went wrong. Please try again.", "error");
             setTemplates([]);
         } finally {
             setLoading(false);
@@ -112,10 +114,10 @@ export default function WorkoutTemplatesPage() {
             setName("");
             setDescription("");
             setExercises([emptyExercise()]);
-            showToast("✅ Template created", "success");
+            showToast("Template created", "success");
             await fetchTemplates();
         } catch {
-            showToast("❌ Something went wrong. Please try again.", "error");
+            showToast("Something went wrong. Please try again.", "error");
         } finally {
             setSaving(false);
         }
@@ -134,11 +136,11 @@ export default function WorkoutTemplatesPage() {
                 throw new Error(data.error || "Failed to start workout");
             }
 
-            showToast("💪 Workout started from template", "success");
+            showToast("Workout started from template", "success");
             router.push(`/dashboard/workouts/${data.workout_id}`);
             router.refresh();
         } catch {
-            showToast("❌ Something went wrong. Please try again.", "error");
+            showToast("Something went wrong. Please try again.", "error");
         }
     };
 
@@ -152,48 +154,56 @@ export default function WorkoutTemplatesPage() {
                 throw new Error("Failed to delete template");
             }
 
-            showToast("🗑 Template removed", "info");
+            showToast("Template removed", "info");
             await fetchTemplates();
         } catch {
-            showToast("❌ Something went wrong. Please try again.", "error");
+            showToast("Something went wrong. Please try again.", "error");
         }
     };
 
     return (
         <div className="mx-auto max-w-6xl space-y-8">
             <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Workout Templates</h1>
-                <Link href="/dashboard/workouts" className="text-sm font-medium text-gray-900 hover:text-gray-800 dark:text-gray-400">
-                    Back to Workouts
-                </Link>
+                <div className="flex items-center gap-3">
+                    <Link
+                        href="/dashboard/workouts"
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-800 bg-[#161616] text-neutral-450 hover:bg-neutral-900 hover:text-white transition"
+                        aria-label="Back to workouts"
+                    >
+                        <ArrowLeft className="h-5 w-5" />
+                    </Link>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white font-heading">Workout Templates</h1>
+                </div>
             </div>
 
-            <form onSubmit={handleCreateTemplate} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">New Template</h2>
+            <form onSubmit={handleCreateTemplate} className="space-y-6 rounded-2xl border border-neutral-800 bg-[#161616] p-6 shadow-sm">
+                <h2 className="text-xl font-semibold text-white">Create Reusable Template</h2>
                 <div className="grid gap-4 md:grid-cols-2">
                     <input
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="Template name"
-                        className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        placeholder="Template name (e.g. Push Day)"
+                        className="input-field bg-neutral-900 border-neutral-800 text-white focus:border-[#FFB800]"
                         required
                     />
                     <input
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         placeholder="Description (optional)"
-                        className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        className="input-field bg-neutral-900 border-neutral-800 text-white focus:border-[#FFB800]"
                     />
                 </div>
 
                 <div className="space-y-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-neutral-450">Exercises</p>
                     {exercises.map((exercise, index) => (
-                        <div key={`row-${index}`} className="grid gap-2 md:grid-cols-6">
+                        <div key={`row-${index}`} className="grid gap-2 md:grid-cols-6 items-center">
                             <input
                                 value={exercise.name}
                                 onChange={(e) => setExerciseField(index, "name", e.target.value)}
-                                placeholder="Exercise"
-                                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white md:col-span-2"
+                                placeholder="Exercise name"
+                                className="input-field bg-neutral-900 border-neutral-800 text-white focus:border-[#FFB800] md:col-span-2"
+                                required
                             />
                             <input
                                 type="number"
@@ -201,7 +211,8 @@ export default function WorkoutTemplatesPage() {
                                 value={exercise.sets}
                                 onChange={(e) => setExerciseField(index, "sets", Number(e.target.value) || 1)}
                                 placeholder="Sets"
-                                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                className="input-field bg-neutral-900 border-neutral-800 text-white focus:border-[#FFB800]"
+                                required
                             />
                             <input
                                 type="number"
@@ -209,7 +220,8 @@ export default function WorkoutTemplatesPage() {
                                 value={exercise.reps}
                                 onChange={(e) => setExerciseField(index, "reps", Number(e.target.value) || 1)}
                                 placeholder="Reps"
-                                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                className="input-field bg-neutral-900 border-neutral-800 text-white focus:border-[#FFB800]"
+                                required
                             />
                             <input
                                 type="number"
@@ -217,78 +229,100 @@ export default function WorkoutTemplatesPage() {
                                 step="0.5"
                                 value={exercise.weight_kg ?? ""}
                                 onChange={(e) => setExerciseField(index, "weight_kg", e.target.value === "" ? null : Number(e.target.value))}
-                                placeholder="Weight"
-                                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                placeholder="Weight (kg)"
+                                className="input-field bg-neutral-900 border-neutral-800 text-white focus:border-[#FFB800]"
                             />
                             <button
                                 type="button"
                                 onClick={() => removeExerciseRow(index)}
                                 disabled={exercises.length === 1}
-                                className="rounded-md border border-red-300 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-900/20"
+                                className="rounded-xl border border-red-900/50 bg-red-950/20 px-3 py-2.5 text-sm font-semibold text-red-400 hover:bg-red-900/20 transition disabled:opacity-40 flex items-center justify-center gap-1.5"
                             >
-                                Remove
+                                <Trash2 className="h-4 w-4" />
+                                <span>Remove</span>
                             </button>
                         </div>
                     ))}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-3 border-t border-neutral-850 pt-4">
                     <button
                         type="button"
                         onClick={addExerciseRow}
-                        className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+                        className="rounded-xl border border-neutral-800 bg-neutral-900 hover:bg-neutral-850 px-4 py-2.5 text-sm font-bold text-white transition flex items-center gap-1.5"
                     >
-                        Add Exercise Row
+                        <Plus className="h-4 w-4" />
+                        Add Exercise
                     </button>
                     <button
                         type="submit"
                         disabled={saving}
-                        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-60"
+                        className="rounded-xl bg-[#FFB800] hover:shadow-[0_0_15px_rgba(255,184,0,0.25)] px-5 py-2.5 text-sm font-bold text-black transition disabled:opacity-60 flex items-center gap-1.5"
                     >
-                        {saving ? "Saving..." : "Save Template"}
+                        {saving ? (
+                            <>
+                                <Loader2 className="h-4 w-4 animate-spin text-black" />
+                                <span>Saving...</span>
+                            </>
+                        ) : (
+                            <>
+                                <Save className="h-4 w-4" />
+                                <span>Save Template</span>
+                            </>
+                        )}
                     </button>
                 </div>
             </form>
 
-            <section className="space-y-3">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Your Templates</h2>
+            <section className="space-y-4">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                    <ClipboardList className="h-5 w-5 text-[#FFB800]" />
+                    <span>Your Templates</span>
+                </h2>
 
                 {loading ? (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Loading templates...</p>
+                    <div className="flex items-center gap-2 text-sm text-neutral-450 py-4">
+                        <Loader2 className="h-4 w-4 animate-spin text-[#FFB800]" />
+                        <span>Loading templates...</span>
+                    </div>
                 ) : templates.length === 0 ? (
-                    <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                        <p>No templates yet. Build your first reusable routine 🧩</p>
+                    <div className="rounded-2xl border border-neutral-800 bg-[#161616] p-8 text-center text-neutral-400">
+                        <AlertCircle className="h-8 w-8 text-neutral-600 mx-auto mb-2" />
+                        <p className="text-sm">No templates yet. Build your first reusable routine above.</p>
                     </div>
                 ) : (
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <RevealOnScroll className="grid gap-4 md:grid-cols-2">
                         {templates.map((template) => (
-                            <article key={template.id} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{template.name}</h3>
-                                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{template.description || "No description"}</p>
-                                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{template.exercises?.length || 0} exercises</p>
+                            <article key={template.id} className="rounded-2xl border border-neutral-800 bg-[#161616] p-5 hover:border-neutral-700 transition-all flex flex-col justify-between gap-4">
+                                <div>
+                                    <h3 className="text-lg font-bold text-white">{template.name}</h3>
+                                    <p className="mt-1 text-sm text-neutral-400">{template.description || "No description"}</p>
+                                    <p className="mt-2 text-xs font-semibold text-neutral-500 uppercase tracking-wider">{template.exercises?.length || 0} exercises</p>
+                                </div>
 
-                                <div className="mt-4 flex items-center gap-2">
+                                <div className="mt-2 flex items-center gap-2 border-t border-neutral-850 pt-4">
                                     <button
                                         type="button"
                                         onClick={() => void handleStartWorkout(template.id)}
-                                        className="rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700"
+                                        className="rounded-xl bg-[#FFB800] text-black px-4 py-2 text-xs font-bold hover:shadow-[0_0_15px_rgba(255,184,0,0.2)] transition-all flex items-center gap-1.5"
                                     >
-                                        Start Workout
+                                        <Play className="h-3 w-3 fill-black text-black" />
+                                        <span>Start Workout</span>
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => void handleDeleteTemplate(template.id)}
-                                        className="rounded-md border border-red-300 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-900/20"
+                                        className="rounded-xl border border-red-900/50 bg-red-950/20 px-4 py-2 text-xs font-semibold text-red-400 hover:bg-red-900/20 transition flex items-center gap-1.5"
                                     >
-                                        Delete
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                        <span>Delete</span>
                                     </button>
                                 </div>
                             </article>
                         ))}
-                    </div>
+                    </RevealOnScroll>
                 )}
             </section>
         </div>
     );
 }
-

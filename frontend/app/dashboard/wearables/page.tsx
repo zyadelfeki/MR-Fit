@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { BarChart2, Moon, Heart, Activity, Check, AlertCircle, Loader2 } from "lucide-react";
+import RevealOnScroll from "@/components/RevealOnScroll";
 
 type Snapshot = {
   data_type: string;
@@ -9,11 +11,16 @@ type Snapshot = {
   recorded_at: string;
 };
 
-const TYPE_LABELS: Record<string, string> = {
-  daily: "📊 Daily Activity",
-  sleep: "💤 Sleep",
-  body: "❤️ Body Metrics",
-  activity: "🏃 Last Activity",
+type TypeConfig = {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+const TYPE_CONFIGS: Record<string, TypeConfig> = {
+  daily: { label: "Daily Activity", icon: BarChart2 },
+  sleep: { label: "Sleep", icon: Moon },
+  body: { label: "Body Metrics", icon: Heart },
+  activity: { label: "Last Activity", icon: Activity },
 };
 
 const FIELD_LABELS: Record<string, string> = {
@@ -54,45 +61,49 @@ export default function WearablesPage() {
   }, [session]);
 
   return (
-    <div className="max-w-3xl mx-auto py-10 px-4">
-      <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Wearable Device</h1>
-      <p className="text-gray-600 dark:text-gray-300 mb-8">
-        Connect your Apple Watch, Garmin, Oura Ring, or Whoop via{" "}
-        <a
-          href="http://localhost:4000"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline text-indigo-600 dark:text-indigo-400"
-        >
-          Open Wearables
-        </a>
-        . Your data is stored locally — never leaves your machine.
-      </p>
+    <div className="max-w-3xl mx-auto py-10 px-4 space-y-6">
+      <div>
+        <h1 className="text-3xl font-black text-white font-heading">Wearable Device</h1>
+        <p className="text-neutral-400 mt-2 text-sm">
+          Connect your Apple Watch, Garmin, Oura Ring, or Whoop via{" "}
+          <a
+            href="http://localhost:4000"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline text-[#FFB800]"
+          >
+            Open Wearables
+          </a>
+          . Your data is stored locally — never leaves your machine.
+        </p>
+      </div>
 
       {/* Connection status */}
-      <div
-        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium mb-8 ${
-          connected
-            ? "bg-green-100 text-green-700"
-            : "bg-yellow-100 text-yellow-700"
-        }`}
-      >
-        <span
-          className={`w-2 h-2 rounded-full ${
-            connected ? "bg-green-500" : "bg-yellow-500"
+      <div>
+        <div
+          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+            connected
+              ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+              : "border border-amber-500/20 bg-amber-500/10 text-amber-405"
           }`}
-        />
-        {connected ? "Device connected" : "No device connected"}
+        >
+          <span
+            className={`w-2 h-2 rounded-full ${
+              connected ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
+            }`}
+          />
+          {connected ? "Device connected" : "No device connected"}
+        </div>
       </div>
 
       {/* Setup instructions if not connected */}
       {!connected && !loading && (
-        <div className="rounded-xl border border-gray-200 bg-white p-6 mb-8 dark:border-gray-700 dark:bg-gray-800">
-          <h2 className="font-semibold mb-3">How to connect</h2>
-          <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600 dark:text-gray-300">
+        <RevealOnScroll className="rounded-2xl border border-neutral-800 bg-[#161616] p-6">
+          <h2 className="font-bold text-white text-base mb-3">How to connect</h2>
+          <ol className="list-decimal list-inside space-y-2.5 text-sm text-neutral-300">
             <li>
-              Make sure Docker is running, then run:{" "}
-              <code className="bg-muted px-1 rounded">cd open-wearables && docker compose up -d</code>
+              Make sure Docker is running, then execute:{" "}
+              <code className="bg-neutral-900 border border-neutral-850 px-1.5 py-0.5 rounded text-xs text-[#FFB800]">cd open-wearables && docker compose up -d</code>
             </li>
             <li>
               Open{" "}
@@ -100,43 +111,51 @@ export default function WearablesPage() {
                 href="http://localhost:4000"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline"
+                className="underline text-[#FFB800]"
               >
                 localhost:4000
               </a>{" "}
               and connect your device (Apple Health, Garmin, Oura, Whoop)
             </li>
-            <li>Your data will appear here automatically</li>
+            <li>Your data will sync and appear here automatically</li>
           </ol>
-        </div>
+        </RevealOnScroll>
       )}
 
       {/* Data cards */}
       {loading ? (
-        <p className="text-gray-500 dark:text-gray-400">Loading...</p>
+        <div className="flex items-center gap-2 text-sm text-neutral-450 py-4">
+          <Loader2 className="h-4 w-4 animate-spin text-[#FFB800]" />
+          <span>Loading wearable snapshots...</span>
+        </div>
       ) : (
         <div className="grid gap-4">
-          {snapshots.map((snap) => (
-            <div key={snap.data_type} className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
-              <h2 className="font-semibold text-lg mb-3">
-                {TYPE_LABELS[snap.data_type] ?? snap.data_type}
-              </h2>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                {Object.entries(snap.payload).map(([key, val]) => (
-                  <div key={key} className="flex justify-between text-sm">
-                    <span className="text-gray-500 dark:text-gray-400">
-                      {FIELD_LABELS[key] ?? key}
-                    </span>
-                    <span className="font-medium text-gray-900 dark:text-white">{String(val)}</span>
-                  </div>
-                ))}
+          {snapshots.map((snap) => {
+            const config = TYPE_CONFIGS[snap.data_type];
+            const IconComponent = config?.icon || Activity;
+            return (
+              <div key={snap.data_type} className="rounded-2xl border border-neutral-800 bg-[#161616] p-5 shadow-sm space-y-3">
+                <h2 className="font-bold text-base text-white flex items-center gap-1.5 font-heading">
+                  <IconComponent className="h-4 w-4 text-[#FFB800]" />
+                  <span>{config?.label ?? snap.data_type}</span>
+                </h2>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2 border-t border-neutral-850 pt-3">
+                  {Object.entries(snap.payload).map(([key, val]) => (
+                    <div key={key} className="flex justify-between text-xs py-1 border-b border-neutral-850/30">
+                      <span className="text-neutral-400">
+                        {FIELD_LABELS[key] ?? key}
+                      </span>
+                      <span className="font-semibold text-white">{String(val)}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-neutral-500 mt-2 uppercase tracking-wide">
+                  Last updated:{" "}
+                  {new Date(snap.recorded_at).toLocaleString()}
+                </p>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
-                Last updated:{" "}
-                {new Date(snap.recorded_at).toLocaleString()}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

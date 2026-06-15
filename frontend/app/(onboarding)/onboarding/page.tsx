@@ -2,6 +2,22 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  User,
+  Ruler,
+  Target,
+  Flame,
+  Dumbbell,
+  Trophy,
+  ArrowLeft,
+  ArrowRight,
+  Sprout,
+  Scale,
+  Compass,
+  Check,
+  AlertCircle,
+  Zap,
+} from "lucide-react";
 
 interface OnboardingForms {
   display_name: string;
@@ -14,10 +30,10 @@ interface OnboardingForms {
 }
 
 const STEPS = [
-  { title: "About You", emoji: "👤", subtitle: "Tell us a bit about yourself" },
-  { title: "Body Stats", emoji: "📏", subtitle: "We use this to calculate your needs" },
-  { title: "Your Goal", emoji: "🎯", subtitle: "What are you working towards?" },
-  { title: "Fitness Level", emoji: "💪", subtitle: "How experienced are you?" },
+  { title: "About You", icon: <User className="h-10 w-10 text-amber-500" />, subtitle: "Tell us a bit about yourself" },
+  { title: "Body Stats", icon: <Ruler className="h-10 w-10 text-amber-500" />, subtitle: "We use this to calculate your needs" },
+  { title: "Your Goal", icon: <Target className="h-10 w-10 text-amber-500" />, subtitle: "What are you working towards?" },
+  { title: "Fitness Level", icon: <Dumbbell className="h-10 w-10 text-amber-500" />, subtitle: "How experienced are you?" },
 ];
 
 export default function OnboardingPage() {
@@ -25,6 +41,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [direction, setDirection] = useState<"next" | "prev">("next");
 
   const [formData, setFormData] = useState<OnboardingForms>({
     display_name: "",
@@ -60,10 +77,15 @@ export default function OnboardingPage() {
         return;
       }
     }
+    setDirection("next");
     setStep((prev) => prev + 1);
   };
 
-  const prevStep = () => { setError(""); setStep((prev) => prev - 1); };
+  const prevStep = () => {
+    setError("");
+    setDirection("prev");
+    setStep((prev) => prev - 1);
+  };
 
   const submitForm = async () => {
     setLoading(true);
@@ -97,31 +119,31 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-950 dark:via-gray-900 dark:to-indigo-950 flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-lg">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-950 to-amber-950/10 flex items-center justify-center px-4 py-12 text-white">
+      <div className="w-full max-w-lg animate-fade-in">
         {/* Progress bar */}
         <div className="mb-8">
-          <div className="flex justify-between items-center text-sm text-gray-500 dark:text-gray-400 mb-2">
+          <div className="flex justify-between items-center text-sm text-neutral-400 mb-2">
             <span className="font-medium">Step {step} of {STEPS.length}</span>
-            <span className="font-medium text-indigo-600">{progress}%</span>
+            <span className="font-semibold text-amber-500">{progress}%</span>
           </div>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+          <div className="w-full bg-neutral-900 rounded-full h-1.5 overflow-hidden border border-neutral-800">
             <div
-              className="h-full bg-indigo-600 rounded-full transition-all duration-500 ease-out"
+              className="h-full bg-amber-500 rounded-full transition-all duration-500 ease-out"
               style={{ width: `${progress}%` }}
             />
           </div>
           {/* Step dots */}
-          <div className="flex justify-between mt-3">
+          <div className="flex justify-between mt-4">
             {STEPS.map((s, i) => (
               <div key={i} className="flex flex-col items-center gap-1">
-                <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                  i + 1 < step ? "bg-indigo-600" :
-                  i + 1 === step ? "bg-indigo-600 ring-2 ring-indigo-200" :
-                  "bg-gray-300 dark:bg-gray-600"
+                <div className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                  i + 1 < step ? "bg-amber-500" :
+                  i + 1 === step ? "bg-amber-500 ring-4 ring-amber-500/20" :
+                  "bg-neutral-800 border border-neutral-700"
                 }`} />
-                <span className={`text-xs hidden sm:block ${
-                  i + 1 === step ? "text-indigo-600 font-medium" : "text-gray-400"
+                <span className={`text-[10px] hidden sm:block uppercase tracking-wider mt-1 ${
+                  i + 1 === step ? "text-amber-500 font-semibold" : "text-neutral-500"
                 }`}>{s.title}</span>
               </div>
             ))}
@@ -129,147 +151,142 @@ export default function OnboardingPage() {
         </div>
 
         {/* Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-gray-800">
+        <div className="bg-neutral-950/80 backdrop-blur border border-neutral-900 rounded-3xl shadow-2xl p-8 transition-all duration-300">
           {/* Step header */}
-          <div className="text-center mb-8">
-            <div className="text-5xl mb-3">{currentStep.emoji}</div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{currentStep.title}</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{currentStep.subtitle}</p>
+          <div className="text-center mb-8 animate-slide-up">
+            <div className="inline-flex p-4 bg-amber-500/10 rounded-2xl mb-4 border border-amber-500/20">
+              {currentStep.icon}
+            </div>
+            <h2 className="text-2xl font-bold font-heading text-white tracking-wide">{currentStep.title.toUpperCase()}</h2>
+            <p className="text-sm text-neutral-400 mt-1.5">{currentStep.subtitle}</p>
           </div>
 
           {error && (
-            <div className="mb-5 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="flex-shrink-0">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                <line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                <circle cx="12" cy="16" r="1" fill="currentColor" />
-              </svg>
+            <div className="mb-6 flex items-center gap-2 rounded-xl bg-red-950/40 border border-red-900/60 px-4 py-3.5 text-sm text-red-400">
+              <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-500" />
               {error}
             </div>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-5">
+            {/* Step 1 Form */}
             {step === 1 && (
-              <>
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Display Name</label>
-                  <input type="text" name="display_name" value={formData.display_name} onChange={handleChange} className="input-field" placeholder="e.g. Alex" required />
+              <div className="space-y-4 animate-fade-in">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">Display Name</label>
+                  <input type="text" name="display_name" value={formData.display_name} onChange={handleChange} className="input-field bg-neutral-900 border-neutral-800 text-white rounded-xl focus:border-amber-500 transition-colors" placeholder="e.g. Alex" required />
                 </div>
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Date of Birth</label>
-                  <input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleChange} className="input-field" required />
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">Date of Birth</label>
+                  <input type="date" name="date_of_birth" value={formData.date_of_birth} onChange={handleChange} className="input-field bg-neutral-900 border-neutral-800 text-white rounded-xl focus:border-amber-500 transition-colors" required />
                 </div>
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Gender</label>
-                  <select name="gender" value={formData.gender} onChange={handleChange} className="input-field">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">Gender</label>
+                  <select name="gender" value={formData.gender} onChange={handleChange} className="input-field bg-neutral-900 border-neutral-800 text-white rounded-xl focus:border-amber-500 transition-colors">
                     <option value="male">Male</option>
                     <option value="female">Female</option>
                     <option value="other">Other</option>
                     <option value="prefer_not_to_say">Prefer not to say</option>
                   </select>
                 </div>
-              </>
+              </div>
             )}
 
+            {/* Step 2 Form */}
             {step === 2 && (
-              <>
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Height (cm)</label>
-                  <input type="number" name="height_cm" min="50" max="300" value={formData.height_cm} onChange={handleChange} className="input-field" placeholder="e.g. 175" required />
+              <div className="space-y-4 animate-fade-in">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">Height (cm)</label>
+                  <input type="number" name="height_cm" min="50" max="300" value={formData.height_cm} onChange={handleChange} className="input-field bg-neutral-900 border-neutral-800 text-white rounded-xl focus:border-amber-500 transition-colors" placeholder="e.g. 175" required />
                 </div>
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Weight (kg)</label>
-                  <input type="number" name="weight_kg" min="20" max="500" value={formData.weight_kg} onChange={handleChange} className="input-field" placeholder="e.g. 70" required />
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">Weight (kg)</label>
+                  <input type="number" name="weight_kg" min="20" max="500" value={formData.weight_kg} onChange={handleChange} className="input-field bg-neutral-900 border-neutral-800 text-white rounded-xl focus:border-amber-500 transition-colors" placeholder="e.g. 70" required />
                 </div>
-              </>
+              </div>
             )}
 
+            {/* Step 3 Goal Selection */}
             {step === 3 && (
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">What&apos;s your primary goal?</label>
+              <div className="space-y-3 animate-fade-in">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">What&apos;s your primary goal?</label>
                 {[
-                  { value: "lose_weight", label: "Lose Weight", emoji: "🔥" },
-                  { value: "build_muscle", label: "Build Muscle", emoji: "💪" },
-                  { value: "improve_endurance", label: "Improve Endurance", emoji: "🏃" },
-                  { value: "maintain", label: "Maintain", emoji: "⚖️" },
-                  { value: "flexibility", label: "Flexibility", emoji: "🧘" },
+                  { value: "lose_weight", label: "Lose Weight", icon: <Flame className="h-5 w-5 text-amber-500" /> },
+                  { value: "build_muscle", label: "Build Muscle", icon: <Dumbbell className="h-5 w-5 text-amber-500" /> },
+                  { value: "improve_endurance", label: "Improve Endurance", icon: <Zap className="h-5 w-5 text-amber-500" /> },
+                  { value: "maintain", label: "Maintain", icon: <Scale className="h-5 w-5 text-amber-500" /> },
+                  { value: "flexibility", label: "Flexibility & Mobility", icon: <Compass className="h-5 w-5 text-amber-500" /> },
                 ].map((opt) => (
-                  <label key={opt.value} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                  <label key={opt.value} className={`flex items-center gap-3.5 p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
                     formData.fitness_goal === opt.value
-                      ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
-                      : "border-gray-200 dark:border-gray-700 hover:border-indigo-300"
+                      ? "border-amber-500 bg-amber-500/10"
+                      : "border-neutral-900 bg-neutral-900/50 hover:border-neutral-800"
                   }`}>
                     <input type="radio" name="fitness_goal" value={opt.value} checked={formData.fitness_goal === opt.value} onChange={handleChange} className="sr-only" />
-                    <span className="text-xl">{opt.emoji}</span>
-                    <span className={`text-sm font-medium ${
-                      formData.fitness_goal === opt.value ? "text-indigo-700 dark:text-indigo-300" : "text-gray-700 dark:text-gray-300"
+                    <span className="p-2 bg-neutral-950/60 rounded-xl">{opt.icon}</span>
+                    <span className={`text-sm font-semibold ${
+                      formData.fitness_goal === opt.value ? "text-white" : "text-neutral-300"
                     }`}>{opt.label}</span>
                     {formData.fitness_goal === opt.value && (
-                      <svg className="ml-auto h-4 w-4 text-indigo-600" viewBox="0 0 24 24" fill="none">
-                        <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                      <Check className="ml-auto h-5 w-5 text-amber-500" />
                     )}
                   </label>
                 ))}
               </div>
             )}
 
+            {/* Step 4 Experience Selection */}
             {step === 4 && (
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">How would you describe your fitness level?</label>
+              <div className="space-y-3 animate-fade-in">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">How would you describe your fitness level?</label>
                 {[
-                  { value: "beginner", label: "Beginner", emoji: "🌱", desc: "New to regular exercise" },
-                  { value: "intermediate", label: "Intermediate", emoji: "🏋️", desc: "Training consistently for 6+ months" },
-                  { value: "advanced", label: "Advanced", emoji: "🏆", desc: "Serious athlete or 2+ years experience" },
+                  { value: "beginner", label: "Beginner", icon: <Sprout className="h-5 w-5 text-amber-500" />, desc: "New to regular structured exercise" },
+                  { value: "intermediate", label: "Intermediate", icon: <Dumbbell className="h-5 w-5 text-amber-500" />, desc: "Training consistently for 6+ months" },
+                  { value: "advanced", label: "Advanced", icon: <Trophy className="h-5 w-5 text-amber-500" />, desc: "Serious athlete or 2+ years experience" },
                 ].map((opt) => (
-                  <label key={opt.value} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                  <label key={opt.value} className={`flex items-center gap-3.5 p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
                     formData.fitness_level === opt.value
-                      ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
-                      : "border-gray-200 dark:border-gray-700 hover:border-indigo-300"
+                      ? "border-amber-500 bg-amber-500/10"
+                      : "border-neutral-900 bg-neutral-900/50 hover:border-neutral-800"
                   }`}>
                     <input type="radio" name="fitness_level" value={opt.value} checked={formData.fitness_level === opt.value} onChange={handleChange} className="sr-only" />
-                    <span className="text-xl">{opt.emoji}</span>
+                    <span className="p-2 bg-neutral-950/60 rounded-xl">{opt.icon}</span>
                     <div className="flex flex-col">
-                      <span className={`text-sm font-medium ${
-                        formData.fitness_level === opt.value ? "text-indigo-700 dark:text-indigo-300" : "text-gray-700 dark:text-gray-300"
+                      <span className={`text-sm font-semibold ${
+                        formData.fitness_level === opt.value ? "text-white" : "text-neutral-300"
                       }`}>{opt.label}</span>
-                      <span className="text-xs text-gray-400">{opt.desc}</span>
+                      <span className="text-xs text-neutral-400 mt-0.5">{opt.desc}</span>
                     </div>
                     {formData.fitness_level === opt.value && (
-                      <svg className="ml-auto h-4 w-4 text-indigo-600" viewBox="0 0 24 24" fill="none">
-                        <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                      <Check className="ml-auto h-5 w-5 text-amber-500" />
                     )}
                   </label>
                 ))}
               </div>
             )}
 
-            <div className="flex justify-between pt-4">
+            {/* Controls */}
+            <div className="flex justify-between pt-6 border-t border-neutral-900 mt-6">
               {step > 1 ? (
                 <button onClick={prevStep} disabled={loading}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                    <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-neutral-800 bg-neutral-900/60 text-sm font-semibold text-neutral-300 hover:bg-neutral-800 transition-all">
+                  <ArrowLeft className="h-4 w-4" />
                   Back
                 </button>
               ) : <div />}
 
               {step < 4 ? (
                 <button onClick={nextStep}
-                  className="btn-primary px-6 py-2.5">
+                  className="btn-primary flex items-center gap-2 px-6 py-2.5 shadow-lg shadow-amber-500/10">
                   Continue
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                    <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <ArrowRight className="h-4 w-4" />
                 </button>
               ) : (
                 <button onClick={submitForm} disabled={loading}
-                  className="btn-primary px-6 py-2.5">
+                  className="btn-primary flex items-center gap-2 px-6 py-2.5 shadow-lg shadow-amber-500/10">
                   {loading ? (
                     <>
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <svg className="animate-spin h-4 w-4 text-neutral-950" viewBox="0 0 24 24" fill="none">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                       </svg>
@@ -277,7 +294,8 @@ export default function OnboardingPage() {
                     </>
                   ) : (
                     <>
-                      Get Started 🎉
+                      Complete Setup
+                      <Check className="h-4 w-4" />
                     </>
                   )}
                 </button>

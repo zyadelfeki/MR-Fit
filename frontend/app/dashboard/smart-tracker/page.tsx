@@ -4,11 +4,27 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { showToast } from "@/lib/toast";
 import { ResponsiveContainer, LineChart, Line, YAxis } from "recharts";
+import {
+  ArrowLeft,
+  Wifi,
+  Brain,
+  Hash,
+  Dumbbell,
+  Activity,
+  Flame,
+  Target,
+  GitBranch,
+  Loader2,
+  Save,
+  Cpu,
+  Info
+} from "lucide-react";
+import RevealOnScroll from "@/components/RevealOnScroll";
 
 type ExerciseOption = {
     label: string;
     slug: string;
-    emoji: string;
+    icon: React.ComponentType<{ className?: string }>;
 };
 
 type SensorReading = {
@@ -140,11 +156,11 @@ function confidenceColor(percent: number) {
 }
 
 const EXERCISES: ExerciseOption[] = [
-    { label: "Bench Press", slug: "bench", emoji: "🏋️" },
-    { label: "Back Squat", slug: "squat", emoji: "🦵" },
-    { label: "Deadlift", slug: "dead", emoji: "💪" },
-    { label: "Overhead Press", slug: "ohp", emoji: "🙆" },
-    { label: "Barbell Row", slug: "row", emoji: "🚣" },
+    { label: "Bench Press", slug: "bench", icon: Dumbbell },
+    { label: "Back Squat", slug: "squat", icon: Activity },
+    { label: "Deadlift", slug: "dead", icon: Target },
+    { label: "Overhead Press", slug: "ohp", icon: Flame },
+    { label: "Barbell Row", slug: "row", icon: GitBranch },
 ];
 
 export default function SmartTrackerPage() {
@@ -315,8 +331,8 @@ export default function SmartTrackerPage() {
         <div className="mx-auto max-w-6xl space-y-8">
             <div className="flex items-start justify-between gap-4">
                 <div className="space-y-2">
-                    <Link href="/dashboard" className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
-                        ← Back to dashboard
+                    <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors">
+                        <ArrowLeft className="h-4 w-4" /> Back to dashboard
                     </Link>
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Smart Exercise Tracker</h1>
@@ -325,8 +341,8 @@ export default function SmartTrackerPage() {
                         </p>
                     </div>
                 </div>
-                <div className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] ${statusClasses}`}>
-                    <span className={`mr-2 inline-block h-2 w-2 rounded-full ${serviceOnline ? "bg-emerald-500" : serviceOnline === false ? "bg-red-500" : "bg-gray-400"}`} />
+                <div className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] flex items-center gap-1.5 ${statusClasses}`}>
+                    <span className={`h-2 w-2 rounded-full ${serviceOnline ? "bg-emerald-500 animate-pulse" : serviceOnline === false ? "bg-red-500" : "bg-gray-400"}`} />
                     {serviceOnline === false ? "Offline — Start smart-tracker/api/main.py" : serviceOnline === true ? "Online" : "Checking..."}
                 </div>
             </div>
@@ -352,19 +368,20 @@ export default function SmartTrackerPage() {
                         <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                             {EXERCISES.map((exercise) => {
                                 const active = exercise.slug === selectedExercise;
+                                const IconComponent = exercise.icon;
                                 return (
                                     <button
                                         key={exercise.slug}
                                         type="button"
                                         onClick={() => setSelectedExercise(exercise.slug)}
-                                        className={`rounded-xl border-2 p-3 text-center transition ${
+                                        className={`rounded-xl border-2 p-3 text-center transition-all duration-300 flex flex-col items-center justify-center gap-1.5 ${
                                             active
-                                                ? "border-[#FFB800] bg-neutral-900 text-white"
-                                                : "border-neutral-800 bg-neutral-900/50 hover:border-neutral-700 text-neutral-300"
+                                                ? "border-[#FFB800] bg-neutral-900 text-white shadow-[0_0_15px_rgba(255,184,0,0.15)]"
+                                                : "border-neutral-800 bg-neutral-900/50 hover:border-neutral-700 text-neutral-300 hover:scale-[1.03]"
                                         }`}
                                     >
-                                        <div className="text-xl" aria-hidden="true">
-                                            {exercise.emoji}
+                                        <div className="text-xl text-[#FFB800]" aria-hidden="true">
+                                            <IconComponent className="h-5 w-5" />
                                         </div>
                                         <div className="mt-1 text-xs font-bold">{exercise.label}</div>
                                     </button>
@@ -392,15 +409,17 @@ export default function SmartTrackerPage() {
                             })}
                         </div>
 
-                        <button type="button" className="btn-primary bg-[#FFB800] text-black w-full justify-center py-2.5 font-bold rounded-xl" onClick={() => void handleRunPrediction()} disabled={running}>
+                        <button type="button" className="btn-primary bg-[#FFB800] text-black w-full justify-center py-2.5 font-bold rounded-xl hover:shadow-[0_0_20px_rgba(255,184,0,0.35)] transition-all duration-300 flex items-center gap-2" onClick={() => void handleRunPrediction()} disabled={running}>
                             {running ? (
                                 <span className="flex items-center gap-2">
-                                    <span className="h-2 w-2 animate-bounce rounded-full bg-black [animation-delay:-0.2s]" />
-                                    <span className="h-2 w-2 animate-bounce rounded-full bg-black [animation-delay:-0.1s]" />
-                                    <span className="h-2 w-2 animate-bounce rounded-full bg-black" />
+                                    <Loader2 className="h-4 w-4 animate-spin text-black" />
+                                    <span>Analyzing sensor data...</span>
                                 </span>
                             ) : (
-                                "Run Prediction"
+                                <span className="flex items-center gap-2">
+                                    <Cpu className="h-4 w-4" />
+                                    <span>Run Prediction</span>
+                                </span>
                             )}
                         </button>
 
@@ -434,10 +453,20 @@ export default function SmartTrackerPage() {
                                 <button
                                     type="button"
                                     onClick={() => void handleSaveToWorkoutLog()}
-                                    className="btn-primary bg-[#FFB800] text-black mt-4 w-full justify-center py-2 text-xs font-bold disabled:opacity-60 rounded-lg"
+                                    className="btn-primary bg-[#FFB800] text-black mt-4 w-full justify-center py-2 text-xs font-bold disabled:opacity-60 rounded-lg flex items-center gap-1.5 transition-all hover:shadow-[0_0_15px_rgba(255,184,0,0.2)]"
                                     disabled={saving}
                                 >
-                                    {saving ? "Saving..." : "Save to Workout Log"}
+                                    {saving ? (
+                                        <>
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                            <span>Saving...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="h-3 w-3" />
+                                            <span>Save to Workout Log</span>
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         ) : null}
@@ -472,35 +501,36 @@ export default function SmartTrackerPage() {
                 </div>
             </section>
 
-            <section className="grid gap-6 md:grid-cols-3">
-                <article className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-                    <div className="text-3xl">📡</div>
+            <RevealOnScroll className="grid gap-6 md:grid-cols-3">
+                <article className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-neutral-900 transition-all hover:scale-[1.02] hover:border-neutral-700">
+                    <div className="text-3xl text-[#FFB800] mb-2"><Wifi className="h-8 w-8" /></div>
                     <h3 className="mt-4 text-lg font-bold text-gray-900 dark:text-white">Sensor Data</h3>
-                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                         Your wrist-worn IMU captures 6-axis motion data (acc + gyro) at 5Hz.
                     </p>
                 </article>
 
-                <article className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-                    <div className="text-3xl">🧠</div>
+                <article className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-neutral-900 transition-all hover:scale-[1.02] hover:border-neutral-700">
+                    <div className="text-3xl text-[#FFB800] mb-2"><Brain className="h-8 w-8" /></div>
                     <h3 className="mt-4 text-lg font-bold text-gray-900 dark:text-white">AI Classification</h3>
-                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                         A Random Forest model trained on 9,009 samples classifies your exercise with 100% accuracy across 5 barbell movements.
                     </p>
                 </article>
 
-                <article className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-                    <div className="text-3xl">🔢</div>
+                <article className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-neutral-900 transition-all hover:scale-[1.02] hover:border-neutral-700">
+                    <div className="text-3xl text-[#FFB800] mb-2"><Hash className="h-8 w-8" /></div>
                     <h3 className="mt-4 text-lg font-bold text-gray-900 dark:text-white">Rep Counting</h3>
-                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                         Peak detection on filtered accelerometer signal counts reps with MAE &lt; 1 rep per set.
                     </p>
                 </article>
-            </section>
+            </RevealOnScroll>
 
-            <details className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-                <summary className="cursor-pointer list-none text-lg font-bold text-gray-900 dark:text-white">
-                    Technical Details
+            <details className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-neutral-900">
+                <summary className="cursor-pointer list-none text-lg font-bold text-gray-900 dark:text-white flex items-center justify-between">
+                    <span>Technical Details</span>
+                    <Info className="h-5 w-5 text-neutral-400" />
                 </summary>
                 <div className="mt-4 overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">

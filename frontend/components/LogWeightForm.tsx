@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { showToast } from "@/lib/toast";
+import { Plus, Loader2 } from "lucide-react";
 
 export default function LogWeightForm() {
     const router = useRouter();
@@ -30,19 +31,19 @@ export default function LogWeightForm() {
             }
 
             setWeightKg("");
-            showToast("✅ Weight logged", "success");
+            showToast("Weight logged", "success");
             router.refresh();
         } catch {
-            showToast("❌ Something went wrong. Please try again.", "error");
+            showToast("Something went wrong. Please try again.", "error");
         } finally {
             setSaving(false);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800 sm:flex-row sm:items-end">
-            <div className="flex-1">
-                <label htmlFor="weight-kg" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-2xl border border-neutral-800 bg-[#161616] p-4 sm:flex-row sm:items-end w-full">
+            <div className="flex-1 space-y-1.5">
+                <label htmlFor="weight-kg" className="block text-xs font-bold uppercase tracking-wider text-neutral-450">
                     Log Weight (kg)
                 </label>
                 <input
@@ -54,16 +55,26 @@ export default function LogWeightForm() {
                     value={weightKg}
                     onChange={(e) => setWeightKg(e.target.value === "" ? "" : Number(e.target.value))}
                     placeholder="e.g. 78.4"
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    className="w-full rounded-xl border border-neutral-850 bg-neutral-900 px-3 py-2 text-sm text-white focus:border-[#FFB800] focus:outline-none"
                     required
                 />
             </div>
             <button
                 type="submit"
                 disabled={saving}
-                className="btn-brand disabled:opacity-60"
+                className="btn-primary bg-[#FFB800] text-black font-bold h-[38px] px-5 rounded-xl hover:shadow-[0_0_15px_rgba(255,184,0,0.25)] flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
             >
-                {saving ? "Saving..." : "Log Weight"}
+                {saving ? (
+                    <>
+                        <Loader2 className="h-4 w-4 animate-spin text-black" />
+                        <span>Logging...</span>
+                    </>
+                ) : (
+                    <>
+                        <Plus className="h-4 w-4" />
+                        <span>Log Weight</span>
+                    </>
+                )}
             </button>
         </form>
     );

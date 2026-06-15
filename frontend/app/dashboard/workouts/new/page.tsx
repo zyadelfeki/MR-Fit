@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { showToast } from "@/lib/toast";
+import { ArrowLeft, Loader2, Plus } from "lucide-react";
 
 export default function NewWorkoutPage() {
   const router = useRouter();
@@ -40,12 +41,12 @@ export default function NewWorkoutPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create workout");
 
-      showToast("💪 Workout created!", "success");
+      showToast("Workout created!", "success");
       router.push(`/dashboard/workouts/${data.id}`);
       router.refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to create workout.");
-      showToast("❌ Something went wrong. Please try again.", "error");
+      showToast("Something went wrong. Please try again.", "error");
       setLoading(false);
     }
   };
@@ -56,15 +57,13 @@ export default function NewWorkoutPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard/workouts"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-800 bg-[#161616] text-neutral-450 hover:bg-neutral-900 hover:text-white transition"
             aria-label="Back to workouts"
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
+            <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
-            <h1 className="page-title">Create Workout</h1>
+            <h1 className="page-title text-gray-900 dark:text-white font-bold">Create Workout</h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Start with the basics, then add exercises on the workout details page.
             </p>
@@ -72,9 +71,9 @@ export default function NewWorkoutPage() {
         </div>
       </div>
 
-      <div className="card rounded-2xl p-6 md:p-8">
+      <div className="card rounded-2xl border border-neutral-800 bg-[#161616] p-6 md:p-8">
         {error && (
-          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+          <div className="mb-6 rounded-xl border border-red-900/30 bg-red-950/20 px-4 py-3 text-sm font-medium text-red-400">
             {error}
           </div>
         )}
@@ -127,12 +126,22 @@ export default function NewWorkoutPage() {
             </div>
           </div>
 
-          <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-6 dark:border-gray-800 sm:flex-row sm:justify-end">
+          <div className="flex flex-col-reverse gap-3 border-t border-neutral-800 pt-6 sm:flex-row sm:justify-end">
             <Link href="/dashboard/workouts" className="btn-secondary">
               Cancel
             </Link>
-            <button type="submit" disabled={loading} className="btn-primary">
-              {loading ? "Creating..." : "Create Workout"}
+            <button type="submit" disabled={loading} className="btn-primary bg-[#FFB800] text-black font-bold hover:shadow-[0_0_15px_rgba(255,184,0,0.25)] flex items-center gap-1.5 justify-center">
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin text-black" />
+                  <span>Creating...</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4" />
+                  <span>Create Workout</span>
+                </>
+              )}
             </button>
           </div>
         </form>

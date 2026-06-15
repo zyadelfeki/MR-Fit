@@ -7,6 +7,7 @@ import { useSession, signOut } from "next-auth/react";
 import Toast from "@/components/Toast";
 import WelcomeBanner from "@/components/WelcomeBanner";
 import Logo from "@/components/Logo";
+import { Zap, Flame } from "lucide-react";
 
 const Icons: Record<string, JSX.Element> = {
   dashboard: (
@@ -197,7 +198,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const planBadge = plan === "pro"
     ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300"
     : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300";
-  const planLabel = plan === "pro" ? "⚡ Pro" : "Free Plan";
+  const planLabel = plan === "pro" ? (
+    <span className="flex items-center gap-1 font-semibold text-[10px]">
+      <Zap className="h-3 w-3 fill-amber-500 text-amber-500" /> PRO
+    </span>
+  ) : "Free Plan";
 
   const Sidebar = () => (
     <div className="flex h-full flex-col bg-white dark:bg-gray-900">
@@ -252,10 +257,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     href={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={[
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 transform active:scale-[0.98]",
                       isActive
-                        ? "bg-indigo-600 text-white"
-                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white",
+                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10"
+                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white hover:translate-x-0.5",
                     ].join(" ")}
                     aria-current={isActive ? "page" : undefined}
                   >
@@ -275,12 +280,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Upgrade CTA — only shown on free plan */}
         {plan === "free" && (
-          <div className="mt-4 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 p-4 dark:from-indigo-900/20 dark:to-purple-900/20">
-            <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">⚡ Unlock Pro</p>
-            <p className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">AI Coach, Wearables & advanced analytics</p>
+          <div className="mt-4 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 p-4 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-100/10">
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+              <Zap className="h-3.5 w-3.5 fill-indigo-600 text-indigo-600 dark:fill-indigo-400 dark:text-indigo-400" />
+              Unlock Pro
+            </p>
+            <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400 leading-normal">AI Coach, Wearables & advanced analytics</p>
             <Link
               href="/dashboard/upgrade"
-              className="mt-2 flex items-center justify-center rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-indigo-700"
+              className="mt-2.5 flex items-center justify-center rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-indigo-700 shadow-sm"
             >
               Upgrade to Pro
             </Link>
@@ -306,8 +314,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {Icons.signout} Sign out
         </button>
 
-        <p className="mt-3 text-center text-[11px] text-gray-400 dark:text-gray-500">
-          {streak > 0 ? `🔥 ${streak}-day streak — keep it up!` : "Start your streak today!"}
+        <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-[11px] text-gray-400 dark:text-gray-500">
+          {streak > 0 ? (
+            <>
+              <Flame className="h-3.5 w-3.5 fill-orange-500 text-orange-500 animate-pulse" />
+              <span>{streak}-day streak — keep it up!</span>
+            </>
+          ) : (
+            "Start your streak today!"
+          )}
         </p>
       </div>
     </div>

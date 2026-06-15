@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { Sparkles, X } from "lucide-react";
 
 export default function WelcomeBanner({ name }: { name?: string | null }) {
   const searchParams = useSearchParams();
@@ -30,23 +31,20 @@ export default function WelcomeBanner({ name }: { name?: string | null }) {
     <div
       role="status"
       aria-live="polite"
-      className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-3 bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3 text-white shadow-lg transition-transform duration-400 ${
+      className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-3 bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-3.5 text-neutral-950 shadow-xl transition-all duration-500 ${
         exiting ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"
       }`}
-      style={{ transition: "transform 400ms ease, opacity 400ms ease" }}
     >
-      <span className="text-lg">🎉</span>
-      <span className="text-sm font-medium">
+      <Sparkles className="h-5 w-5 animate-pulse text-neutral-950" />
+      <span className="text-sm font-semibold tracking-wide uppercase font-heading">
         Welcome to MR-Fit{name ? `, ${name}` : ""}! You&apos;re all set up.
       </span>
       <button
         onClick={() => { setExiting(true); setTimeout(() => setVisible(false), 400); }}
-        className="ml-4 rounded-full p-1 hover:bg-white/20 transition-colors"
+        className="ml-4 rounded-full p-1 hover:bg-neutral-950/10 transition-colors"
         aria-label="Dismiss"
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        </svg>
+        <X className="h-4 w-4 text-neutral-950" />
       </button>
     </div>
   );

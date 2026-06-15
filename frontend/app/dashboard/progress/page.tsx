@@ -2,6 +2,8 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import pool from "@/lib/db";
 import LogWeightForm from "@/components/LogWeightForm";
+import { Award, TrendingUp, Calendar, AlertCircle } from "lucide-react";
+import RevealOnScroll from "@/components/RevealOnScroll";
 
 export const metadata = {
     title: "Progress | MR.FIT",
@@ -78,10 +80,10 @@ function buildWeightChart(entries: Array<{ date: string; weight: number }>) {
 }
 
 function heatColor(count: number): string {
-    if (count <= 0) return "bg-gray-100 dark:bg-gray-800";
-    if (count === 1) return "bg-indigo-200";
-    if (count === 2) return "bg-indigo-400";
-    return "bg-indigo-600";
+    if (count <= 0) return "bg-neutral-800";
+    if (count === 1) return "bg-[#FFB800]/30";
+    if (count === 2) return "bg-[#FFB800]/65";
+    return "bg-[#FFB800]";
 }
 
 const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
@@ -172,46 +174,50 @@ export default async function ProgressPage() {
             </div>
 
             {/* Weight Trend */}
-            <section className="space-y-4">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Weight Trend — Last 30 Days</h2>
+            <RevealOnScroll className="space-y-4">
+                <div className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-[#FFB800]" />
+                    <h2 className="text-lg font-semibold text-white">Weight Trend — Last 30 Days</h2>
+                </div>
                 <LogWeightForm />
 
-                <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <div className="rounded-xl border border-neutral-800 bg-[#161616] p-5 shadow-sm">
                     {/* Summary stats */}
                     {weightSeries.length > 0 && (
-                        <div className="mb-5 flex flex-wrap gap-8 border-b border-gray-100 pb-5 dark:border-gray-700">
+                        <div className="mb-5 flex flex-wrap gap-8 border-b border-neutral-850 pb-5">
                             <div>
-                                <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Current Weight</p>
-                                <p className="mt-0.5 text-xl font-bold text-gray-900 dark:text-white">{currentWeight} kg</p>
+                                <p className="text-xs font-medium text-neutral-400">Current Weight</p>
+                                <p className="mt-0.5 text-xl font-bold text-white">{currentWeight} kg</p>
                             </div>
                             <div>
-                                <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Change (30d)</p>
+                                <p className="text-xs font-medium text-neutral-400">Change (30d)</p>
                                 <p className={`mt-0.5 text-xl font-bold ${
-                                    weightDelta === null ? "text-gray-400" :
+                                    weightDelta === null ? "text-neutral-500" :
                                     weightDelta > 0 ? "text-red-500" :
-                                    weightDelta < 0 ? "text-emerald-500" : "text-gray-500"
+                                    weightDelta < 0 ? "text-emerald-500" : "text-neutral-400"
                                 }`}>
                                     {weightDelta === null ? "—" : `${weightDelta > 0 ? "+" : ""}${weightDelta.toFixed(1)} kg`}
                                 </p>
                             </div>
                             <div>
-                                <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Entries Logged</p>
-                                <p className="mt-0.5 text-xl font-bold text-gray-900 dark:text-white">{weightSeries.length}</p>
+                                <p className="text-xs font-medium text-neutral-400">Entries Logged</p>
+                                <p className="mt-0.5 text-xl font-bold text-white">{weightSeries.length}</p>
                             </div>
                         </div>
                     )}
 
                     {!chart ? (
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Log your weight daily to see your progress chart 📉
-                        </p>
+                        <div className="flex items-center gap-2 text-sm text-neutral-400">
+                            <AlertCircle className="h-4 w-4 text-neutral-500" />
+                            <span>Log your weight daily to see your progress chart.</span>
+                        </div>
                     ) : (
                         <div className="overflow-x-auto">
                             <svg viewBox={`0 0 ${chart.W} ${chart.H}`} className="h-56 w-full min-w-[580px]">
                                 <defs>
                                     <linearGradient id="weightGrad" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="#6366f1" stopOpacity="0.28" />
-                                        <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+                                        <stop offset="0%" stopColor="#FFB800" stopOpacity="0.25" />
+                                        <stop offset="100%" stopColor="#FFB800" stopOpacity="0" />
                                     </linearGradient>
                                 </defs>
 
@@ -219,9 +225,9 @@ export default async function ProgressPage() {
                                 {chart.gridLines.map((gl, i) => (
                                     <g key={i}>
                                         <line x1={48} x2={chart.W - 16} y1={gl.y} y2={gl.y}
-                                            stroke="currentColor" strokeOpacity="0.07" strokeWidth="1" className="text-gray-600" />
+                                            stroke="currentColor" strokeOpacity="0.05" strokeWidth="1" className="text-neutral-600" />
                                         <text x={44} y={gl.y + 4} fontSize="10" fill="currentColor"
-                                            opacity="0.45" textAnchor="end" className="text-gray-600">
+                                            opacity="0.45" textAnchor="end" className="text-neutral-400">
                                             {gl.label}
                                         </text>
                                     </g>
@@ -231,13 +237,13 @@ export default async function ProgressPage() {
                                 <path d={chart.areaPath} fill="url(#weightGrad)" />
 
                                 {/* Line */}
-                                <polyline fill="none" stroke="#6366f1" strokeWidth="2.5"
+                                <polyline fill="none" stroke="#FFB800" strokeWidth="2.5"
                                     strokeLinejoin="round" strokeLinecap="round"
                                     points={chart.pts} />
 
                                 {/* Dots */}
                                 {chart.dots.map((d, i) => (
-                                    <circle key={i} cx={d.cx} cy={d.cy} r="3.5" fill="#4f46e5">
+                                    <circle key={i} cx={d.cx} cy={d.cy} r="3.5" fill="#FFB800">
                                         <title>{d.label}</title>
                                     </circle>
                                 ))}
@@ -245,7 +251,7 @@ export default async function ProgressPage() {
                                 {/* X labels */}
                                 {chart.xLabels.map((xl, i) => (
                                     <text key={i} x={xl.x} y={chart.H - 4} fontSize="10" fill="currentColor"
-                                        opacity="0.45" textAnchor="middle" className="text-gray-600">
+                                        opacity="0.45" textAnchor="middle" className="text-neutral-400">
                                         {xl.label}
                                     </text>
                                 ))}
@@ -253,18 +259,21 @@ export default async function ProgressPage() {
                         </div>
                     )}
                 </div>
-            </section>
+            </RevealOnScroll>
 
             {/* Heatmap */}
-            <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Workout Frequency</h2>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Last 12 weeks of activity</p>
+            <RevealOnScroll className="rounded-xl border border-neutral-800 bg-[#161616] p-6 shadow-sm">
+                <div className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-[#FFB800]" />
+                    <h2 className="text-lg font-semibold text-white">Workout Frequency</h2>
+                </div>
+                <p className="mt-1 text-sm text-neutral-400">Last 12 weeks of activity</p>
 
                 <div className="mt-5 flex gap-2 overflow-x-auto">
                     {/* Day-of-week labels */}
                     <div className="flex flex-col gap-0.5 pr-1">
                         {DAY_LABELS.map((d, i) => (
-                            <div key={i} className="flex h-3.5 items-center text-[9px] text-gray-400">{d}</div>
+                            <div key={i} className="flex h-3.5 items-center text-[9px] text-neutral-500">{d}</div>
                         ))}
                     </div>
 
@@ -273,63 +282,67 @@ export default async function ProgressPage() {
                             {week.map((day) => (
                                 <div key={day.date}
                                     title={`${day.date}: ${day.count} workouts`}
-                                    className={`h-3.5 w-3.5 rounded-sm ${heatColor(day.count)}`} />
+                                    className={`h-3.5 w-3.5 rounded-sm ${heatColor(day.count)} transition-all hover:scale-[1.15]`} />
                             ))}
                         </div>
                     ))}
                 </div>
 
-                <div className="mt-3 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <div className="mt-4 flex items-center gap-2 text-xs text-neutral-400">
                     <span>Less</span>
-                    <span className="h-3.5 w-3.5 rounded-sm bg-gray-100 dark:bg-gray-800" />
-                    <span className="h-3.5 w-3.5 rounded-sm bg-indigo-200" />
-                    <span className="h-3.5 w-3.5 rounded-sm bg-indigo-400" />
-                    <span className="h-3.5 w-3.5 rounded-sm bg-indigo-600" />
+                    <span className="h-3.5 w-3.5 rounded-sm bg-neutral-800" />
+                    <span className="h-3.5 w-3.5 rounded-sm bg-[#FFB800]/30" />
+                    <span className="h-3.5 w-3.5 rounded-sm bg-[#FFB800]/65" />
+                    <span className="h-3.5 w-3.5 rounded-sm bg-[#FFB800]" />
                     <span>More</span>
                 </div>
-            </section>
+            </RevealOnScroll>
 
             {/* PRs */}
-            <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Personal Records</h2>
+            <RevealOnScroll className="rounded-xl border border-neutral-800 bg-[#161616] p-6 shadow-sm">
+                <div className="flex items-center gap-2">
+                    <Award className="h-5 w-5 text-[#FFB800]" />
+                    <h2 className="text-lg font-semibold text-white">Personal Records</h2>
+                </div>
 
                 {prRows.length === 0 ? (
-                    <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-                        Complete workouts with weights to track your PRs 🏆
-                    </p>
+                    <div className="mt-4 flex items-center gap-2 text-sm text-neutral-400">
+                        <AlertCircle className="h-4 w-4 text-neutral-500" />
+                        <span>Complete workouts with weights to track your PRs.</span>
+                    </div>
                 ) : (
                     <div className="mt-4 overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <table className="min-w-full divide-y divide-neutral-800">
                             <thead>
                                 <tr>
-                                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Exercise</th>
-                                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Best Weight</th>
-                                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Reps</th>
-                                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Achieved</th>
+                                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-neutral-400">Exercise</th>
+                                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-neutral-400">Best Weight</th>
+                                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-neutral-400">Reps</th>
+                                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-neutral-400">Achieved</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            <tbody className="divide-y divide-neutral-800 text-neutral-300">
                                 {prRows.map((row, idx) => (
                                     <tr key={`${row.exercise_name}-${row.achieved_at}`}
-                                        className={idx === 0 ? "bg-indigo-50 dark:bg-indigo-900/20" : ""}>
-                                        <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
+                                        className={idx === 0 ? "bg-[#FFB800]/5 border-l-2 border-l-[#FFB800]" : ""}>
+                                        <td className="px-4 py-3 text-sm font-medium text-white flex items-center gap-1.5">
                                             {row.exercise_name}
                                             {idx === 0 && (
-                                                <span className="ml-2 inline-flex items-center rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">
-                                                    🏆 PR
+                                                <span className="inline-flex items-center gap-0.5 rounded-full bg-[#FFB800]/10 px-2 py-0.5 text-[9px] font-bold text-[#FFB800] border border-[#FFB800]/20">
+                                                    <Award className="h-2.5 w-2.5" /> PR
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{Number(row.max_weight)} kg</td>
-                                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{Number(row.max_reps)}</td>
-                                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{new Date(row.achieved_at).toLocaleDateString()}</td>
+                                        <td className="px-4 py-3 text-sm">{Number(row.max_weight)} kg</td>
+                                        <td className="px-4 py-3 text-sm">{Number(row.max_reps)}</td>
+                                        <td className="px-4 py-3 text-sm">{new Date(row.achieved_at).toLocaleDateString()}</td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
                 )}
-            </section>
+            </RevealOnScroll>
         </div>
     );
 }

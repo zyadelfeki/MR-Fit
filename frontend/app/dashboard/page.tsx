@@ -3,6 +3,16 @@ import { redirect } from "next/navigation";
 import pool from "@/lib/db";
 import Link from "next/link";
 import MagicInput from "@/components/MagicInput";
+import {
+  Dumbbell,
+  Salad,
+  Bot,
+  Award,
+  ChevronRight,
+  TrendingUp,
+  Scale,
+  Zap,
+} from "lucide-react";
 
 export const metadata = {
   title: "Dashboard | MR.FIT",
@@ -42,31 +52,6 @@ function formatActivityDate(value: string | Date): string {
   if (diffDays === 1) return "Yesterday";
   return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 }
-
-// Stat card icon SVGs
-const DumbbellIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M6 4v16M18 4v16M3 8h3M18 8h3M3 16h3M18 16h3M6 12h12" />
-  </svg>
-);
-const FlameIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 2c0 0-4 4-4 8a4 4 0 0 0 8 0c0-2-1-4-1-4s-1 2-3 2c0-2 1-4 0-6z" />
-    <path d="M12 14c0 2-1 4-3 5" />
-  </svg>
-);
-const ScaleIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 3v18M3 12h18" />
-    <circle cx="12" cy="12" r="9" />
-    <circle cx="12" cy="12" r="1" fill="currentColor" />
-  </svg>
-);
-const BoltIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-  </svg>
-);
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -164,63 +149,64 @@ export default async function DashboardPage() {
       label: "Workouts This Week",
       value: String(displayWorkouts),
       sub: displayWorkouts > 0 ? `${displayWorkouts} session${displayWorkouts === 1 ? "" : "s"} logged` : "No sessions yet",
-      icon: <DumbbellIcon />,
-      iconBg: "bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400",
+      icon: <Dumbbell className="h-5 w-5" />,
+      iconBg: "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400",
       valueColor: "text-indigo-600 dark:text-indigo-400",
     },
     {
       label: "Calories Today",
       value: caloriesToday > 0 ? `${caloriesToday}` : "0",
       sub: `Goal: ${calorieGoal} kcal`,
-      icon: <FlameIcon />,
-      iconBg: "bg-orange-50 text-orange-500 dark:bg-orange-900/30 dark:text-orange-400",
+      icon: <Zap className="h-5 w-5" />,
+      iconBg: "bg-orange-50 text-orange-500 dark:bg-orange-950/30 dark:text-orange-400",
       valueColor: "text-orange-500 dark:text-orange-400",
     },
     {
       label: "Current Weight",
       value: profile.weight_kg ? `${profile.weight_kg}` : "—",
       sub: profile.weight_kg ? "kg" : "Not set",
-      icon: <ScaleIcon />,
-      iconBg: "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
+      icon: <Scale className="h-5 w-5" />,
+      iconBg: "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400",
       valueColor: "text-blue-600 dark:text-blue-400",
     },
     {
       label: "Active Streak",
       value: String(streak),
-      sub: streak > 2 ? "Keep it up! 🔥" : streak > 0 ? "Building momentum" : "Start today!",
-      icon: <BoltIcon />,
-      iconBg: "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
+      sub: streak > 2 ? "Keep it up!" : streak > 0 ? "Building momentum" : "Start today!",
+      icon: <TrendingUp className="h-5 w-5" />,
+      iconBg: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400",
       valueColor: "text-emerald-600 dark:text-emerald-400",
     },
   ];
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="max-w-7xl mx-auto space-y-8 text-white">
       {/* Daily quote */}
-      <div className="rounded-xl bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 px-5 py-3 text-sm italic text-white shadow-sm">
-        &ldquo;{DAILY_QUOTES[quoteIndex]}&rdquo;
+      <div className="rounded-2xl border border-neutral-900 bg-neutral-950/40 px-5 py-3.5 text-xs tracking-wider uppercase text-neutral-400 font-heading select-none flex flex-wrap items-center gap-2">
+        <span className="text-amber-500 font-bold">MOTIVATION:</span>
+        <span className="italic font-medium">&ldquo;{DAILY_QUOTES[quoteIndex]}&rdquo;</span>
       </div>
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="page-title">
-          Welcome back, {profile.display_name?.split(" ")[0] ?? "there"} 👋
+        <h1 className="page-title text-2xl font-bold tracking-tight">
+          Welcome back, {profile.display_name?.split(" ")[0] ?? "there"}
         </h1>
-        <Link href="/dashboard/workouts/new" className="btn-primary text-sm hidden sm:inline-flex">
-          + Log Workout
+        <Link href="/dashboard/workouts/new" className="btn-primary text-sm hidden sm:inline-flex items-center gap-1.5 shadow-md">
+          <Dumbbell className="h-4 w-4" /> Log Workout
         </Link>
       </div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {statCards.map((card) => (
-          <div key={card.label} className="stat-card">
+          <div key={card.label} className="card rounded-2xl p-5 border border-neutral-900 bg-neutral-950/30 hover:border-neutral-800 transition-all duration-300 transform hover:-translate-y-0.5">
             <div className="flex items-start justify-between">
               <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${card.iconBg}`}>
                 {card.icon}
               </div>
             </div>
-            <p className={`mt-3 text-2xl font-bold tabular-nums ${card.valueColor}`}>
+            <p className={`mt-3 text-2xl font-bold font-heading tabular-nums ${card.valueColor}`}>
               {card.value}
               {card.label === "Calories Today" && card.value !== "0" && (
                 <span className="ml-1 text-sm font-normal text-gray-400">kcal</span>
@@ -229,8 +215,8 @@ export default async function DashboardPage() {
                 <span className="ml-1 text-sm font-normal text-gray-400">{streak === 1 ? "day" : "days"}</span>
               )}
             </p>
-            <p className="mt-0.5 text-xs font-medium text-gray-500 dark:text-gray-400">{card.label}</p>
-            <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">{card.sub}</p>
+            <p className="mt-0.5 text-xs font-semibold text-neutral-400">{card.label.toUpperCase()}</p>
+            <p className="mt-1 text-[11px] text-neutral-500">{card.sub}</p>
           </div>
         ))}
       </div>
@@ -241,27 +227,27 @@ export default async function DashboardPage() {
           <MagicInput />
         </div>
         <div className="lg:col-span-1">
-          <div className="card rounded-2xl p-6 h-full flex flex-col justify-between">
+          <div className="card rounded-2xl p-6 border border-neutral-900 bg-neutral-950/30 h-full flex flex-col justify-between">
             <div>
-              <h2 className="section-title mb-5">Today at a Glance</h2>
+              <h2 className="section-title mb-5 font-heading uppercase text-sm tracking-widest text-neutral-400">Today at a Glance</h2>
               <div className="space-y-4">
                 {[
-                  { label: "Calories", current: caloriesToday, goal: calorieGoal, pct: caloriesPct, unit: "kcal", color: "bg-indigo-500" },
+                  { label: "Calories", current: caloriesToday, goal: calorieGoal, pct: caloriesPct, unit: "kcal", color: "bg-amber-500" },
                   { label: "Protein",  current: proteinToday,  goal: proteinGoal,  pct: proteinPct,  unit: "g",    color: "bg-emerald-500" },
-                  { label: "Weekly Workouts", current: displayWorkouts, goal: 4, pct: workoutPct, unit: "/ 4 sessions", color: "bg-orange-400" },
+                  { label: "Weekly Workouts", current: displayWorkouts, goal: 4, pct: workoutPct, unit: "/ 4 sessions", color: "bg-indigo-500" },
                 ].map((item) => (
                   <div key={item.label}>
                     <div className="mb-1.5 flex items-center justify-between text-sm">
-                      <span className="font-medium text-gray-700 dark:text-gray-300">{item.label}</span>
-                      <span className="tabular-nums text-gray-500 dark:text-gray-400">
+                      <span className="font-semibold text-neutral-300">{item.label}</span>
+                      <span className="tabular-nums text-neutral-400 text-xs">
                         {item.label === "Weekly Workouts"
                           ? `${item.current} ${item.unit}`
                           : `${item.current} / ${item.goal} ${item.unit}`}
                       </span>
                     </div>
-                    <div className="progress-track">
+                    <div className="progress-track bg-neutral-900 border border-neutral-850 h-2">
                       <div
-                        className={`progress-fill ${item.color}`}
+                        className={`progress-fill rounded-full ${item.color}`}
                         style={{ width: `${item.pct}%` }}
                       />
                     </div>
@@ -274,24 +260,28 @@ export default async function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <section>
-        <h2 className="section-title">Quick Actions</h2>
+      <section className="space-y-4">
+        <h2 className="section-title font-heading uppercase text-sm tracking-widest text-neutral-400">Quick Actions</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {[
-            { href: "/dashboard/workouts/new",   emoji: "🏋️", title: "Log a Workout", desc: "Start tracking today’s training session." },
-            { href: "/dashboard/nutrition",       emoji: "🥗",   title: "Log Food",      desc: "Add meals and monitor your daily macros." },
-            { href: "/dashboard/ai-coach",        emoji: "🤖",   title: "Ask AI Coach",  desc: "Get tailored advice based on your progress." },
+            { href: "/dashboard/workouts/new",   icon: <Dumbbell className="h-6 w-6 text-amber-500" />, title: "Log a Workout", desc: "Start tracking today’s training session." },
+            { href: "/dashboard/nutrition",       icon: <Salad className="h-6 w-6 text-emerald-500" />,   title: "Log Food",      desc: "Add meals and monitor your daily macros." },
+            { href: "/dashboard/ai-coach",        icon: <Bot className="h-6 w-6 text-indigo-400" />,   title: "Ask AI Coach",  desc: "Get tailored advice based on your progress." },
           ].map((action) => (
             <Link
               key={action.href}
               href={action.href}
-              className="group card card-hover rounded-xl p-5"
+              className="group card card-premium-glow rounded-2xl p-5 border border-neutral-900 bg-neutral-950/30 flex flex-col justify-between h-full"
             >
-              <div className="mb-2 text-2xl" aria-hidden="true">{action.emoji}</div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">{action.title}</h3>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{action.desc}</p>
-              <span className="mt-3 inline-block text-sm font-medium text-indigo-600 transition group-hover:translate-x-1 dark:text-indigo-400">
-                Open →
+              <div>
+                <div className="mb-4 inline-flex p-3 bg-neutral-900 border border-neutral-800 rounded-xl w-fit" aria-hidden="true">
+                  {action.icon}
+                </div>
+                <h3 className="font-bold text-white font-heading uppercase text-sm tracking-wide">{action.title}</h3>
+                <p className="mt-1 text-xs text-neutral-400 leading-relaxed">{action.desc}</p>
+              </div>
+              <span className="mt-4 flex items-center gap-1 text-xs font-semibold text-amber-500 transition group-hover:translate-x-1">
+                Open <ChevronRight className="h-3.5 w-3.5" />
               </span>
             </Link>
           ))}
@@ -299,44 +289,44 @@ export default async function DashboardPage() {
       </section>
 
       {/* Recent Activity */}
-      <section className="card rounded-2xl p-6">
-        <h2 className="section-title">Recent Activity</h2>
+      <section className="card rounded-2xl p-6 border border-neutral-900 bg-neutral-950/30">
+        <h2 className="section-title font-heading uppercase text-sm tracking-widest text-neutral-400 mb-5">Recent Activity</h2>
         {recentActivity.length === 0 ? (
-          <div className="flex flex-col items-center py-10 text-center">
-            <div className="mb-3 text-4xl">💪</div>
-            <p className="font-medium text-gray-700 dark:text-gray-300">Your fitness story starts here.</p>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Log your first workout or meal to see activity here.</p>
-            <Link href="/dashboard/workouts/new" className="btn-primary mt-4 text-sm">
+          <div className="flex flex-col items-center py-12 text-center">
+            <Award className="h-10 w-10 text-amber-500 mb-3 animate-pulse" />
+            <p className="font-semibold text-neutral-300">Your fitness story starts here.</p>
+            <p className="mt-1 text-xs text-neutral-500">Log your first workout or meal to see activity here.</p>
+            <Link href="/dashboard/workouts/new" className="btn-primary mt-4 text-xs font-semibold">
               Log first workout
             </Link>
           </div>
         ) : (
-          <ul role="list" className="divide-y divide-gray-100 dark:divide-gray-800">
+          <ul role="list" className="divide-y divide-neutral-900">
             {recentActivity.map((item, i) => (
               <li
                 key={`${item.type}-${i}`}
-                className="flex items-center gap-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg px-2 -mx-2"
+                className="flex items-center gap-4 py-3.5 transition-colors hover:bg-neutral-900/30 rounded-xl px-3 -mx-3"
               >
                 {/* Color accent dot */}
                 <span
-                  className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                  className={`h-2 w-2 shrink-0 rounded-full ${
                     item.type === "workout" ? "bg-indigo-500" : "bg-emerald-500"
                   }`}
                 />
                 {/* Type badge */}
                 <span
-                  className={`badge ${
+                  className={`badge text-[10px] font-semibold tracking-wider ${
                     item.type === "workout"
-                      ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400"
-                      : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                      ? "bg-indigo-950/50 text-indigo-400 border border-indigo-900/30"
+                      : "bg-emerald-950/50 text-emerald-400 border border-emerald-900/30"
                   }`}
                 >
-                  {item.type === "workout" ? "Workout" : "Meal"}
+                  {item.type === "workout" ? "WORKOUT" : "MEAL"}
                 </span>
-                <span className="flex-1 truncate text-sm font-medium text-gray-900 dark:text-white">
+                <span className="flex-1 truncate text-xs font-medium text-neutral-300">
                   {item.label}
                 </span>
-                <span className="shrink-0 text-xs text-gray-400 dark:text-gray-500">
+                <span className="shrink-0 text-[10px] text-neutral-500 font-semibold uppercase">
                   {formatActivityDate(item.logged_at)}
                 </span>
               </li>

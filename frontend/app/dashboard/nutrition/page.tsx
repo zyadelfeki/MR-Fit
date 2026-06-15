@@ -3,34 +3,46 @@
 import { useState, useEffect } from "react";
 import { showToast } from "@/lib/toast";
 import Link from "next/link";
+import {
+  Camera,
+  Trash2,
+  X,
+  RefreshCw,
+  Check,
+  Salad,
+  Search,
+  AlertCircle,
+  Plus,
+  ChevronDown,
+} from "lucide-react";
 
 type NutritionLog = {
-    id: string;
-    food_name: string;
-    calories: number;
-    protein_g: number | null;
-    carbs_g: number | null;
-    fat_g: number | null;
-    logged_at: string;
+  id: string;
+  food_name: string;
+  calories: number;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
+  logged_at: string;
 };
 
 type FoodResult = {
-    name: string;
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-    servingSize: string;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  servingSize: string;
 };
 
 type DailySummary = {
-    totals: { calories: number; protein: number; carbs: number; fat: number };
-    goals: { calories: number; protein: number; carbs: number; fat: number };
+  totals: { calories: number; protein: number; carbs: number; fat: number };
+  goals: { calories: number; protein: number; carbs: number; fat: number };
 };
 
 const DEFAULT_SUMMARY: DailySummary = {
-    totals: { calories: 0, protein: 0, carbs: 0, fat: 0 },
-    goals: { calories: 2000, protein: 150, carbs: 250, fat: 65 },
+  totals: { calories: 0, protein: 0, carbs: 0, fat: 0 },
+  goals: { calories: 2000, protein: 150, carbs: 250, fat: 65 },
 };
 
 const toRounded = (v: number) => Math.round(v * 10) / 10;
@@ -38,526 +50,715 @@ const toRounded = (v: number) => Math.round(v * 10) / 10;
 type MealGroup = "Breakfast" | "Lunch" | "Dinner" | "Snacks";
 
 function getMealGroup(loggedAt: string): MealGroup {
-    const h = new Date(loggedAt).getHours();
-    if (h < 10) return "Breakfast";
-    if (h < 15) return "Lunch";
-    if (h < 20) return "Dinner";
-    return "Snacks";
+  const h = new Date(loggedAt).getHours();
+  if (h < 10) return "Breakfast";
+  if (h < 15) return "Lunch";
+  if (h < 20) return "Dinner";
+  return "Snacks";
 }
 
 export default function NutritionPage() {
-    const [logs, setLogs] = useState<NutritionLog[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [summary, setSummary] = useState<DailySummary>(DEFAULT_SUMMARY);
-    const [openGroups, setOpenGroups] = useState<Record<MealGroup, boolean>>({
-        Breakfast: true, Lunch: true, Dinner: true, Snacks: true,
-    });
+  const [logs, setLogs] = useState<NutritionLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<DailySummary>(DEFAULT_SUMMARY);
+  const [openGroups, setOpenGroups] = useState<Record<MealGroup, boolean>>({
+    Breakfast: true,
+    Lunch: true,
+    Dinner: true,
+    Snacks: true,
+  });
 
-    // Scanner States & Logic
-    const [scannerOpen, setScannerOpen] = useState(false);
-    const [scanLoading, setScanLoading] = useState(false);
-    const [scanResult, setScanResult] = useState<FoodResult | null>(null);
-    const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  // Scanner States & Logic
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanResult, setScanResult] = useState<FoodResult | null>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
 
-    const startCamera = async () => {
-        setScannerOpen(true);
-        setScanResult(null);
-        // Wait a tick for modal to mount video element
-        setTimeout(async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                setCameraStream(stream);
-                const videoEl = document.getElementById("scanner-video") as HTMLVideoElement;
-                if (videoEl) videoEl.srcObject = stream;
-            } catch (e) {
-                console.warn("Webcam access not granted or unavailable, entering simulated scanner.");
-            }
-        }, 100);
-    };
+  const startCamera = async () => {
+    setScannerOpen(true);
+    setScanResult(null);
+    setTimeout(async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+        });
+        setCameraStream(stream);
+        const videoEl = document.getElementById("scanner-video") as HTMLVideoElement;
+        if (videoEl) videoEl.srcObject = stream;
+      } catch (e) {
+        console.warn("Webcam access not granted, using simulation.");
+      }
+    }, 100);
+  };
 
-    const stopCamera = () => {
-        if (cameraStream) {
-            cameraStream.getTracks().forEach((track) => track.stop());
-            setCameraStream(null);
-        }
-        setScannerOpen(false);
-    };
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      setCameraStream(null);
+    }
+    setScannerOpen(false);
+  };
 
-    const handleScanImage = async () => {
-        setScanLoading(true);
-        try {
-            const res = await fetch("/api/nutrition/scan", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ image: "mock_image_data" }),
-            });
-            if (!res.ok) throw new Error();
-            const data = await res.json();
-            setScanResult(data.food);
-        } catch {
-            showToast("❌ Scanner failed", "error");
-        } finally {
-            setScanLoading(false);
-        }
-    };
+  const handleScanImage = async () => {
+    setScanLoading(true);
+    try {
+      const res = await fetch("/api/nutrition/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: "mock_image_data" }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setScanResult(data.food);
+    } catch {
+      showToast("Scanner failed", "error");
+    } finally {
+      setScanLoading(false);
+    }
+  };
 
-    const acceptScan = () => {
-        if (scanResult) {
-            setFoodName(scanResult.name);
-            setCalories(scanResult.calories);
-            setProtein(scanResult.protein);
-            setCarbs(scanResult.carbs);
-            setFats(scanResult.fat);
-            stopCamera();
-            showToast("✅ Scanner filled form details", "success");
-        }
-    };
+  const acceptScan = () => {
+    if (scanResult) {
+      setFoodName(scanResult.name);
+      setCalories(scanResult.calories);
+      setProtein(scanResult.protein);
+      setCarbs(scanResult.carbs);
+      setFats(scanResult.fat);
+      stopCamera();
+      showToast("Scanner filled form details", "success");
+    }
+  };
 
-    // Search
-    const [searchQuery, setSearchQuery] = useState("");
-    const [searchResults, setSearchResults] = useState<FoodResult[]>([]);
-    const [searchLoading, setSearchLoading] = useState(false);
-    const [searchError, setSearchError] = useState<string | null>(null);
+  // Search
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<FoodResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
-    // Form
-    const [foodName, setFoodName] = useState("");
-    const [calories, setCalories] = useState<number | "">("");
-    const [protein, setProtein] = useState<number | "">("");
-    const [carbs, setCarbs] = useState<number | "">("");
-    const [fats, setFats] = useState<number | "">("");
-    const [loggedDate, setLoggedDate] = useState(() => new Date().toISOString().split("T")[0]);
+  // Form
+  const [foodName, setFoodName] = useState("");
+  const [calories, setCalories] = useState<number | "">("");
+  const [protein, setProtein] = useState<number | "">("");
+  const [carbs, setCarbs] = useState<number | "">("");
+  const [fats, setFats] = useState<number | "">("");
+  const [loggedDate, setLoggedDate] = useState(() => new Date().toISOString().split("T")[0]);
 
-    const fetchLogs = async () => {
-        try {
-            setLoading(true);
-            const res = await fetch("/api/nutrition");
-            if (!res.ok) throw new Error("Failed to fetch logs");
-            const data = await res.json();
-            setLogs(data.logs ?? []);
-        } catch { setError("Failed to load nutrition logs."); }
-        finally { setLoading(false); }
-    };
+  const fetchLogs = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/nutrition");
+      if (!res.ok) throw new Error("Failed to fetch logs");
+      const data = await res.json();
+      setLogs(data.logs ?? []);
+    } catch {
+      setError("Failed to load nutrition logs.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const fetchDailySummary = async () => {
-        try {
-            const res = await fetch("/api/nutrition/daily-summary", { cache: "no-store" });
-            if (!res.ok) throw new Error();
-            const data = (await res.json()) as DailySummary;
-            setSummary({
-                totals: {
-                    calories: Number(data.totals?.calories ?? 0),
-                    protein: Number(data.totals?.protein ?? 0),
-                    carbs: Number(data.totals?.carbs ?? 0),
-                    fat: Number(data.totals?.fat ?? 0),
-                },
-                goals: {
-                    calories: Number(data.goals?.calories ?? 2000),
-                    protein: Number(data.goals?.protein ?? 150),
-                    carbs: Number(data.goals?.carbs ?? 250),
-                    fat: Number(data.goals?.fat ?? 65),
-                },
-            });
-        } catch { setSummary(DEFAULT_SUMMARY); }
-    };
+  const fetchDailySummary = async () => {
+    try {
+      const res = await fetch("/api/nutrition/daily-summary", { cache: "no-store" });
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as DailySummary;
+      setSummary({
+        totals: {
+          calories: Number(data.totals?.calories ?? 0),
+          protein: Number(data.totals?.protein ?? 0),
+          carbs: Number(data.totals?.carbs ?? 0),
+          fat: Number(data.totals?.fat ?? 0),
+        },
+        goals: {
+          calories: Number(data.goals?.calories ?? 2000),
+          protein: Number(data.goals?.protein ?? 150),
+          carbs: Number(data.goals?.carbs ?? 250),
+          fat: Number(data.goals?.fat ?? 65),
+        },
+      });
+    } catch {
+      setSummary(DEFAULT_SUMMARY);
+    }
+  };
 
-    const refresh = async () => { await Promise.all([fetchLogs(), fetchDailySummary()]); };
+  const refresh = async () => {
+    await Promise.all([fetchLogs(), fetchDailySummary()]);
+  };
 
-    useEffect(() => { void refresh(); }, []);
+  useEffect(() => {
+    void refresh();
+  }, []);
 
-    useEffect(() => {
-        const trimmed = searchQuery.trim();
-        if (!trimmed) { setSearchResults([]); setSearchLoading(false); setSearchError(null); return; }
-        const t = setTimeout(async () => {
-            try {
-                setSearchLoading(true); setSearchError(null);
-                const res = await fetch(`/api/nutrition/search?q=${encodeURIComponent(trimmed)}`, { cache: "no-store" });
-                const data = await res.json() as { foods?: FoodResult[]; error?: string };
-                setSearchResults(data.foods ?? []);
-                if (data.error) setSearchError(data.error);
-            } catch { setSearchResults([]); setSearchError("Search unavailable"); }
-            finally { setSearchLoading(false); }
-        }, 400);
-        return () => clearTimeout(t);
-    }, [searchQuery]);
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      setSearchError(null);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        setSearchLoading(true);
+        setSearchError(null);
+        const res = await fetch(`/api/nutrition/search?q=${encodeURIComponent(trimmed)}`, {
+          cache: "no-store",
+        });
+        const data = (await res.json()) as { foods?: FoodResult[]; error?: string };
+        setSearchResults(data.foods ?? []);
+        if (data.error) setSearchError(data.error);
+      } catch {
+        setSearchResults([]);
+        setSearchError("Search unavailable");
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
 
-    const selectFood = (food: FoodResult) => {
-        setFoodName(food.name); setCalories(food.calories); setProtein(food.protein);
-        setCarbs(food.carbs); setFats(food.fat); setSearchQuery(food.name); setSearchResults([]);
-    };
+  const selectFood = (food: FoodResult) => {
+    setFoodName(food.name);
+    setCalories(food.calories);
+    setProtein(food.protein);
+    setCarbs(food.carbs);
+    setFats(food.fat);
+    setSearchQuery(food.name);
+    setSearchResults([]);
+  };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!foodName || calories === "" || calories < 1) { setError("Please provide a valid food name and calories."); return; }
-        try {
-            setSubmitting(true); setError(null);
-            const res = await fetch("/api/nutrition", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    food_name: foodName, calories: Number(calories),
-                    protein_g: protein === "" ? null : Number(protein),
-                    carbs_g: carbs === "" ? null : Number(carbs),
-                    fat_g: fats === "" ? null : Number(fats),
-                    logged_at: loggedDate + "T12:00:00",
-                }),
-            });
-            if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Failed"); }
-            setFoodName(""); setCalories(""); setProtein(""); setCarbs(""); setFats("");
-            setLoggedDate(new Date().toISOString().split("T")[0]);
-            await refresh();
-            showToast("✅ Food logged successfully", "success");
-        } catch (err) {
-            const msg = err instanceof Error ? err.message : "Failed to add food log.";
-            setError(msg); showToast("❌ Something went wrong.", "error");
-        } finally { setSubmitting(false); }
-    };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!foodName || calories === "" || calories < 1) {
+      setError("Please provide a valid food name and calories.");
+      return;
+    }
+    try {
+      setSubmitting(true);
+      setError(null);
+      const res = await fetch("/api/nutrition", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          food_name: foodName,
+          calories: Number(calories),
+          protein_g: protein === "" ? null : Number(protein),
+          carbs_g: carbs === "" ? null : Number(carbs),
+          fat_g: fats === "" ? null : Number(fats),
+          logged_at: new Date(loggedDate).toISOString(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to log food");
 
-    const handleDelete = async (id: string) => {
-        try {
-            setError(null);
-            const res = await fetch(`/api/nutrition/log/${id}`, { method: "DELETE" });
-            if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Failed"); }
-            await refresh();
-            showToast("🗑 Entry removed", "info");
-        } catch (err) {
-            const msg = err instanceof Error ? err.message : "Failed to delete.";
-            setError(msg); showToast("❌ Something went wrong.", "error");
-        }
-    };
+      // reset form
+      setFoodName("");
+      setCalories("");
+      setProtein("");
+      setCarbs("");
+      setFats("");
+      setSearchQuery("");
+      showToast("Logged successfully", "success");
+      await refresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An error occurred.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-    // Group logs by meal time
-    const MEAL_ORDER: MealGroup[] = ["Breakfast", "Lunch", "Dinner", "Snacks"];
-    const grouped: Record<MealGroup, NutritionLog[]> = { Breakfast: [], Lunch: [], Dinner: [], Snacks: [] };
-    logs.forEach((log) => grouped[getMealGroup(log.logged_at)].push(log));
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`/api/nutrition?id=${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      showToast("Deleted successfully", "success");
+      await refresh();
+    } catch {
+      showToast("Failed to delete log", "error");
+    }
+  };
 
-    const macroRows = [
-        { label: "Calories", total: summary.totals.calories, goal: summary.goals.calories, color: "bg-indigo-500", unit: "kcal" },
-        { label: "Protein",  total: summary.totals.protein,  goal: summary.goals.protein,  color: "bg-emerald-500", unit: "g" },
-        { label: "Carbs",    total: summary.totals.carbs,    goal: summary.goals.carbs,    color: "bg-amber-500",   unit: "g" },
-        { label: "Fat",      total: summary.totals.fat,      goal: summary.goals.fat,      color: "bg-rose-500",    unit: "g" },
-    ];
+  const MEAL_ORDER: MealGroup[] = ["Breakfast", "Lunch", "Dinner", "Snacks"];
+  const grouped: Record<MealGroup, NutritionLog[]> = {
+    Breakfast: [],
+    Lunch: [],
+    Dinner: [],
+    Snacks: [],
+  };
+  logs.forEach((log) => {
+    const grp = getMealGroup(log.logged_at);
+    grouped[grp].push(log);
+  });
 
-    const goalsNotSet = summary.goals.calories === 2000 && summary.goals.protein === 150;
+  const macros = [
+    {
+      label: "Calories",
+      total: summary.totals.calories,
+      goal: summary.goals.calories,
+      unit: "kcal",
+      color: "bg-amber-500",
+      textColor: "text-amber-500",
+      bgColor: "bg-amber-500/10",
+    },
+    {
+      label: "Protein",
+      total: summary.totals.protein,
+      goal: summary.goals.protein,
+      unit: "g",
+      color: "bg-emerald-500",
+      textColor: "text-emerald-500",
+      bgColor: "bg-emerald-500/10",
+    },
+    {
+      label: "Carbs",
+      total: summary.totals.carbs,
+      goal: summary.goals.carbs,
+      unit: "g",
+      color: "bg-orange-400",
+      textColor: "text-orange-400",
+      bgColor: "bg-orange-400/10",
+    },
+    {
+      label: "Fats",
+      total: summary.totals.fat,
+      goal: summary.goals.fat,
+      unit: "g",
+      color: "bg-rose-500",
+      textColor: "text-rose-500",
+      bgColor: "bg-rose-500/10",
+    },
+  ];
 
-    return (
-        <div className="mx-auto max-w-4xl space-y-8 p-4">
-            {/* Page header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Nutrition</h1>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Track your daily food intake and macros</p>
-                </div>
-            </div>
+  return (
+    <div className="max-w-4xl mx-auto space-y-8 text-white">
+      {/* Page Title */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="page-title text-2xl font-bold tracking-tight uppercase font-heading">Nutrition Logging</h1>
+          <p className="text-xs text-neutral-400 uppercase tracking-wide font-semibold mt-1">Track calories & macronutrients</p>
+        </div>
+      </div>
 
-            {/* Macro summary grid */}
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                {macroRows.map((row) => {
-                    const pct = Math.min((row.total / Math.max(row.goal, 1)) * 100, 100);
-                    const over = row.total > row.goal;
-                    return (
-                        <div key={row.label} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                            <p className="text-xs font-medium text-gray-400 dark:text-gray-500">{row.label}</p>
-                            <p className={`mt-1 text-lg font-bold ${over ? "text-red-500" : "text-gray-900 dark:text-white"}`}>
-                                {toRounded(row.total)}
-                                <span className="ml-0.5 text-xs font-normal text-gray-400">/ {row.goal} {row.unit}</span>
-                            </p>
-                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                                <div
-                                    className={`h-full rounded-full transition-all duration-300 ${over ? "bg-red-500" : row.color}`}
-                                    style={{ width: `${pct}%` }}
-                                />
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl bg-red-950/40 border border-red-900/60 px-4 py-3.5 text-sm text-red-400">
+          <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-500" />
+          {error}
+        </div>
+      )}
 
-            {goalsNotSet && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Using default macro goals.{" "}
-                    <Link href="/dashboard/profile" className="text-indigo-600 hover:underline dark:text-indigo-400">Set your goals →</Link>
+      {/* Summary grid */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {macros.map((m) => {
+          const pct = Math.min(Math.round((m.total / (m.goal || 1)) * 100), 100);
+          return (
+            <div
+              key={m.label}
+              className="card rounded-2xl p-5 border border-neutral-900 bg-neutral-950/30 flex flex-col justify-between"
+            >
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-450">
+                  {m.label}
+                </span>
+                <p className={`text-xl font-extrabold font-heading tabular-nums mt-1 ${m.textColor}`}>
+                  {toRounded(m.total)}
+                  <span className="text-xs font-normal text-neutral-400 ml-0.5">{m.unit}</span>
                 </p>
-            )}
+              </div>
+              <div className="mt-4">
+                <div className="flex items-center justify-between text-[10px] text-neutral-500 font-semibold mb-1">
+                  <span>GOAL: {m.goal}{m.unit}</span>
+                  <span>{pct}%</span>
+                </div>
+                <div className="progress-track bg-neutral-900 h-1.5 border border-neutral-850">
+                  <div className={`progress-fill ${m.color}`} style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
-            {error && <div className="rounded-md bg-red-50 p-4 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">{error}</div>}
+      {/* Log Food Form */}
+      <div
+        id="log-food-card"
+        className="card rounded-2xl p-6 border border-neutral-900 bg-neutral-950/30 space-y-6"
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="section-title font-heading uppercase text-sm tracking-widest text-neutral-400">Log Meals</h2>
 
-            {/* Log Food Form */}
-            <div id="log-food-card" className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <h2 className="mb-4 text-base font-semibold text-gray-900 dark:text-white">Log Food</h2>
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 max-w-[200px]">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+              <input
+                type="text"
+                placeholder="Search foods..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="input-field pl-9 bg-neutral-900 border-neutral-800 text-xs py-2 h-9 rounded-xl focus:border-amber-500"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => void startCamera()}
+              className="btn-primary flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold"
+              title="Scan Food with Camera"
+            >
+              <Camera className="h-4 w-4" /> Scan Food
+            </button>
+          </div>
 
-                <div className="relative mb-5">
-                    <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Search food...</label>
-                    <div className="relative flex gap-2">
-                        <div className="relative flex-1">
-                            <svg className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-                            </svg>
-                            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                placeholder="Search food..." />
+          {(searchLoading || searchQuery.trim()) && (
+            <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-72 overflow-y-auto rounded-lg border border-neutral-900 bg-neutral-950 shadow-2xl">
+              {searchLoading && (
+                <div className="flex items-center gap-2 p-4 text-xs text-neutral-400">
+                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-neutral-800 border-t-amber-500" />
+                  Searching local directory...
+                </div>
+              )}
+              {!searchLoading && searchError && (
+                <div className="p-4 text-xs text-red-400">{searchError}</div>
+              )}
+              {!searchLoading && !searchError && searchResults.length === 0 && searchQuery.trim() && (
+                <div className="p-4 text-xs text-neutral-500">No results found</div>
+              )}
+              {!searchLoading &&
+                !searchError &&
+                searchResults.map((food) => (
+                  <button
+                    key={`${food.name}-${food.servingSize}`}
+                    type="button"
+                    onClick={() => selectFood(food)}
+                    className="w-full border-b border-neutral-900 px-4 py-3 text-left last:border-0 hover:bg-neutral-900/50"
+                  >
+                    <div className="text-sm font-semibold text-white">{food.name}</div>
+                    <div className="mt-1 flex gap-3 text-[10px] font-semibold text-neutral-400">
+                      <span className="text-amber-500">{food.calories} kcal</span>
+                      <span className="text-emerald-500">P: {food.protein}g</span>
+                      <span className="text-orange-400">C: {food.carbs}g</span>
+                      <span className="text-rose-500">F: {food.fat}g</span>
+                    </div>
+                  </button>
+                ))}
+            </div>
+          )}
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">Food Name *</label>
+              <input
+                type="text"
+                value={foodName}
+                onChange={(e) => setFoodName(e.target.value)}
+                required
+                className="input-field bg-neutral-900 border-neutral-800 text-white rounded-xl focus:border-amber-500"
+                placeholder="e.g. Chicken Breast"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">Date</label>
+              <input
+                type="date"
+                value={loggedDate}
+                onChange={(e) => setLoggedDate(e.target.value)}
+                required
+                className="input-field bg-neutral-900 border-neutral-800 text-white rounded-xl focus:border-amber-500"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">Calories *</label>
+              <input
+                type="number"
+                min="1"
+                value={calories}
+                onChange={(e) =>
+                  setCalories(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                required
+                className="input-field bg-neutral-900 border-neutral-800 text-white rounded-xl focus:border-amber-500"
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">Protein (g)</label>
+              <input
+                type="number"
+                min="0"
+                value={protein}
+                onChange={(e) =>
+                  setProtein(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                className="input-field bg-neutral-900 border-neutral-800 text-white rounded-xl focus:border-amber-500"
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">Carbs (g)</label>
+              <input
+                type="number"
+                min="0"
+                value={carbs}
+                onChange={(e) =>
+                  setCarbs(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                className="input-field bg-neutral-900 border-neutral-800 text-white rounded-xl focus:border-amber-500"
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">Fats (g)</label>
+              <input
+                type="number"
+                min="0"
+                value={fats}
+                onChange={(e) => setFats(e.target.value === "" ? "" : Number(e.target.value))}
+                className="input-field bg-neutral-900 border-neutral-800 text-white rounded-xl focus:border-amber-500"
+                placeholder="0"
+              />
+            </div>
+          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="btn-primary flex items-center gap-1.5 px-6 py-2.5 shadow-md shadow-amber-500/10 text-xs font-bold"
+          >
+            <Plus className="h-4 w-4" /> {submitting ? "Saving..." : "Log Food"}
+          </button>
+        </form>
+      </div>
+
+      {/* Food Log — grouped by meal */}
+      <div className="space-y-4">
+        <h2 className="section-title font-heading uppercase text-sm tracking-widest text-neutral-400">Today&apos;s Food Log</h2>
+
+        {loading ? (
+          <div className="p-6 text-center text-xs text-neutral-500">Loading food diary...</div>
+        ) : logs.length === 0 ? (
+          <div className="card rounded-2xl border border-neutral-900 bg-neutral-950/30 p-8 text-center flex flex-col items-center">
+            <Salad className="h-10 w-10 text-neutral-500 mb-3 animate-pulse" />
+            <p className="font-semibold text-neutral-300">No food logged yet today.</p>
+            <a
+              href="#log-food-card"
+              className="btn-primary mt-4 text-xs font-semibold px-4 py-2"
+            >
+              Log your first meal
+            </a>
+          </div>
+        ) : (
+          MEAL_ORDER.map((group) => {
+            const items = grouped[group];
+            if (items.length === 0) return null;
+            const groupCals = items.reduce((s, l) => s + l.calories, 0);
+            const isOpen = openGroups[group];
+            return (
+              <div
+                key={group}
+                className="overflow-hidden rounded-2xl border border-neutral-900 bg-neutral-950/30 shadow-md transition-all duration-300"
+              >
+                <button
+                  type="button"
+                  onClick={() => setOpenGroups((prev) => ({ ...prev, [group]: !prev[group] }))}
+                  className="flex w-full items-center justify-between px-5 py-4 text-left border-b border-neutral-900/50 hover:bg-neutral-900/10"
+                >
+                  <span className="text-sm font-bold font-heading uppercase tracking-wider text-white">
+                    {group}
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-neutral-400">
+                      {groupCals} kcal
+                    </span>
+                    <ChevronDown
+                      className={`h-4 w-4 text-neutral-400 transition-transform ${
+                        isOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </div>
+                </button>
+
+                {isOpen && (
+                  <div className="divide-y divide-neutral-900 bg-neutral-950/10">
+                    {items.map((log) => (
+                      <div key={log.id} className="flex items-center justify-between px-5 py-3.5">
+                        <div>
+                          <p className="text-sm font-bold text-white">{log.food_name}</p>
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[9px] font-semibold text-amber-500">
+                              {log.calories} kcal
+                            </span>
+                            {log.protein_g != null && (
+                              <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[9px] font-semibold text-emerald-400">
+                                P: {log.protein_g}g
+                              </span>
+                            )}
+                            {log.carbs_g != null && (
+                              <span className="rounded-full bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 text-[9px] font-semibold text-orange-400">
+                                C: {log.carbs_g}g
+                              </span>
+                            )}
+                            {log.fat_g != null && (
+                              <span className="rounded-full bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 text-[9px] font-semibold text-rose-400">
+                                F: {log.fat_g}g
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <button
-                            type="button"
-                            onClick={() => void startCamera()}
-                            className="btn-primary flex items-center gap-1.5 px-3 py-2 text-xs font-semibold"
-                            title="Scan Food with Camera"
+                          type="button"
+                          onClick={() => void handleDelete(log.id)}
+                          className="ml-4 p-1 text-neutral-500 hover:text-red-400 transition-colors"
+                          aria-label={`Delete ${log.food_name}`}
                         >
-                            📷 Scan food
+                          <Trash2 className="h-4 w-4" />
                         </button>
-                    </div>
-
-                    {(searchLoading || searchQuery.trim()) && (
-                        <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
-                            {searchLoading && (
-                                <div className="flex items-center gap-2 p-4 text-sm text-gray-500">
-                                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-indigo-500" />
-                                    Searching...
-                                </div>
-                            )}
-                            {!searchLoading && searchError && <div className="p-4 text-sm text-red-500">{searchError}</div>}
-                            {!searchLoading && !searchError && searchResults.length === 0 && searchQuery.trim() && (
-                                <div className="p-4 text-sm text-gray-500 dark:text-gray-400">No results found</div>
-                            )}
-                            {!searchLoading && !searchError && searchResults.map((food) => (
-                                <button key={`${food.name}-${food.servingSize}`} type="button" onClick={() => selectFood(food)}
-                                    className="w-full border-b border-gray-100 px-3 py-2.5 text-left last:border-0 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700">
-                                    <div className="text-sm font-medium text-gray-900 dark:text-white">{food.name}</div>
-                                    <div className="mt-0.5 flex gap-3 text-xs text-gray-500 dark:text-gray-400">
-                                        <span className="text-indigo-600 dark:text-indigo-400">{food.calories} kcal</span>
-                                        <span className="text-emerald-600">P: {food.protein}g</span>
-                                        <span className="text-amber-600">C: {food.carbs}g</span>
-                                        <span className="text-rose-600">F: {food.fat}g</span>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Food Name *</label>
-                            <input type="text" value={foodName} onChange={(e) => setFoodName(e.target.value)} required
-                                className="input-field" placeholder="e.g. Chicken Breast" />
-                        </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
-                            <input type="date" value={loggedDate} onChange={(e) => setLoggedDate(e.target.value)} required
-                                className="input-field" />
-                        </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Calories *</label>
-                            <input type="number" min="1" value={calories}
-                                onChange={(e) => setCalories(e.target.value === "" ? "" : Number(e.target.value))} required
-                                className="input-field" placeholder="0" />
-                        </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Protein (g)</label>
-                            <input type="number" min="0" value={protein}
-                                onChange={(e) => setProtein(e.target.value === "" ? "" : Number(e.target.value))}
-                                className="input-field" placeholder="0" />
-                        </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Carbs (g)</label>
-                            <input type="number" min="0" value={carbs}
-                                onChange={(e) => setCarbs(e.target.value === "" ? "" : Number(e.target.value))}
-                                className="input-field" placeholder="0" />
-                        </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Fats (g)</label>
-                            <input type="number" min="0" value={fats}
-                                onChange={(e) => setFats(e.target.value === "" ? "" : Number(e.target.value))}
-                                className="input-field" placeholder="0" />
-                        </div>
-                    </div>
-                    <button type="submit" disabled={submitting} className="btn-primary">
-                        {submitting ? "Saving..." : "Log Food"}
-                    </button>
-                </form>
-            </div>
-
-            {/* Food Log — grouped by meal */}
-            <div className="space-y-4">
-                <h2 className="text-base font-semibold text-gray-900 dark:text-white">Today&apos;s Food Log</h2>
-
-                {loading ? (
-                    <div className="p-6 text-center text-sm text-gray-500">Loading...</div>
-                ) : logs.length === 0 ? (
-                    <div className="rounded-xl border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
-                        <p className="text-2xl">🍽️</p>
-                        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">No food logged yet today.</p>
-                        <a href="#log-food-card"
-                            className="mt-3 inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-xs font-medium text-white hover:bg-indigo-700">
-                            Log your first meal
-                        </a>
-                    </div>
-                ) : (
-                    MEAL_ORDER.map((group) => {
-                        const items = grouped[group];
-                        if (items.length === 0) return null;
-                        const groupCals = items.reduce((s, l) => s + l.calories, 0);
-                        const isOpen = openGroups[group];
-                        return (
-                            <div key={group} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                                <button
-                                    type="button"
-                                    onClick={() => setOpenGroups((prev) => ({ ...prev, [group]: !prev[group] }))}
-                                    className="flex w-full items-center justify-between px-4 py-3 text-left"
-                                >
-                                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{group}</span>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs font-medium text-gray-400">{groupCals} kcal</span>
-                                        <svg className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
-                                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </div>
-                                </button>
-
-                                {isOpen && (
-                                    <div className="divide-y divide-gray-100 border-t border-gray-100 dark:divide-gray-700 dark:border-gray-700">
-                                        {items.map((log) => (
-                                            <div key={log.id} className="flex items-center justify-between px-4 py-3">
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-900 dark:text-white">{log.food_name}</p>
-                                                    <div className="mt-1 flex flex-wrap gap-1.5">
-                                                        <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
-                                                            {log.calories} kcal
-                                                        </span>
-                                                        {log.protein_g != null && (
-                                                            <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                                                                P: {log.protein_g}g
-                                                            </span>
-                                                        )}
-                                                        {log.carbs_g != null && (
-                                                            <span className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-                                                                C: {log.carbs_g}g
-                                                            </span>
-                                                        )}
-                                                        {log.fat_g != null && (
-                                                            <span className="rounded-full bg-rose-50 px-1.5 py-0.5 text-[10px] font-medium text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">
-                                                                F: {log.fat_g}g
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <button type="button" onClick={() => handleDelete(log.id)}
-                                                    className="ml-4 text-sm text-red-400 hover:text-red-600 transition-colors"
-                                                    aria-label={`Delete ${log.food_name}`}>
-                                                    🗑
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })
+                      </div>
+                    ))}
+                  </div>
                 )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Food Scanner Modal */}
+      {scannerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <style
+            dangerouslySetInnerHTML={{
+              __html: `
+                @keyframes scanSweep {
+                  0% { top: 0%; }
+                  50% { top: 100%; }
+                  100% { top: 0%; }
+                }
+                .scanner-line {
+                  position: absolute;
+                  left: 0;
+                  right: 0;
+                  height: 3px;
+                  background: #FFB800;
+                  box-shadow: 0 0 8px #FFB800;
+                  animation: scanSweep 2s infinite linear;
+                }
+              `,
+            }}
+          />
+
+          <div className="w-full max-w-md overflow-hidden rounded-3xl border border-neutral-800 bg-[#161616] shadow-2xl">
+            <div className="border-b border-neutral-800 p-4 flex justify-between items-center">
+              <h3 className="font-heading font-bold text-lg text-white">AI FOOD SCANNER</h3>
+              <button onClick={stopCamera} className="text-neutral-400 hover:text-white p-1">
+                <X className="h-5 w-5" />
+              </button>
             </div>
 
-            {/* Food Scanner Modal */}
-            {scannerOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                    {/* Inline laser line style */}
-                    <style dangerouslySetInnerHTML={{ __html: `
-                        @keyframes scanSweep {
-                            0% { top: 0%; }
-                            50% { top: 100%; }
-                            100% { top: 0%; }
-                        }
-                        .scanner-line {
-                            position: absolute;
-                            left: 0;
-                            right: 0;
-                            height: 3px;
-                            background: #FFB800;
-                            box-shadow: 0 0 8px #FFB800;
-                            animation: scanSweep 2s infinite linear;
-                        }
-                    ` }} />
+            <div className="p-5 space-y-4">
+              <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-950 flex items-center justify-center">
+                {cameraStream ? (
+                  <video
+                    id="scanner-video"
+                    autoPlay
+                    playsInline
+                    muted
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="text-center p-6 space-y-3">
+                    <Camera className="h-10 w-10 text-neutral-500 mx-auto" />
+                    <p className="text-xs text-neutral-450">Webcam stream un-initialized</p>
+                    <p className="text-[10px] text-neutral-500 font-semibold uppercase">
+                      Running Simulation Mode
+                    </p>
+                  </div>
+                )}
 
-                    <div className="w-full max-w-md overflow-hidden rounded-2xl border border-neutral-800 bg-[#161616] shadow-2xl">
-                        <div className="border-b border-neutral-800 p-4 flex justify-between items-center">
-                            <h3 className="font-heading font-bold text-lg text-white">AI Food Scanner</h3>
-                            <button onClick={stopCamera} className="text-neutral-400 hover:text-white text-xl">✕</button>
-                        </div>
-                        
-                        <div className="p-5 space-y-4">
-                            {/* Camera / Simulation Area */}
-                            <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-neutral-800 bg-neutral-950 flex items-center justify-center">
-                                {cameraStream ? (
-                                    <video id="scanner-video" autoPlay playsInline muted className="h-full w-full object-cover" />
-                                ) : (
-                                    <div className="text-center p-6 space-y-2">
-                                        <div className="text-3xl">📷</div>
-                                        <p className="text-xs text-neutral-400">Webcam stream un-initialized or unavailable</p>
-                                        <p className="text-[10px] text-neutral-500">Entering Simulated Scanning Mode</p>
-                                    </div>
-                                )}
+                {(scanLoading || (!cameraStream && !scanResult)) && (
+                  <div className="scanner-line" />
+                )}
+              </div>
 
-                                {/* Scanning Line Overlay */}
-                                {(scanLoading || (!cameraStream && !scanResult)) && (
-                                    <div className="scanner-line" />
-                                )}
-                            </div>
+              {scanLoading && (
+                <p className="text-center text-xs text-[#FFB800] font-semibold animate-pulse">
+                  Analyzing frame with local model...
+                </p>
+              )}
 
-                            {scanLoading && (
-                                <p className="text-center text-xs text-[#FFB800] font-semibold animate-pulse">
-                                    Analyzing image with local CNN model...
-                                </p>
-                            )}
-
-                            {scanResult ? (
-                                <div className="rounded-xl bg-neutral-900 border border-neutral-800 p-4 space-y-3">
-                                    <div>
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#FFB800]">Scanned Item</p>
-                                        <h4 className="text-base font-bold text-white mt-0.5">{scanResult.name}</h4>
-                                    </div>
-                                    <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                                        <div className="p-1.5 rounded bg-neutral-800 border border-neutral-700">
-                                            <span className="block font-bold text-white">{scanResult.calories}</span>
-                                            <span className="text-[9px] text-neutral-400">kcal</span>
-                                        </div>
-                                        <div className="p-1.5 rounded bg-neutral-800 border border-neutral-700">
-                                            <span className="block font-bold text-emerald-400">{scanResult.protein}g</span>
-                                            <span className="text-[9px] text-neutral-400">Protein</span>
-                                        </div>
-                                        <div className="p-1.5 rounded bg-neutral-800 border border-neutral-700">
-                                            <span className="block font-bold text-amber-400">{scanResult.carbs}g</span>
-                                            <span className="text-[9px] text-neutral-400">Carbs</span>
-                                        </div>
-                                        <div className="p-1.5 rounded bg-neutral-800 border border-neutral-700">
-                                            <span className="block font-bold text-rose-400">{scanResult.fat}g</span>
-                                            <span className="text-[9px] text-neutral-400">Fat</span>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="flex gap-2 pt-1">
-                                        <button onClick={handleScanImage} className="btn-secondary flex-1 text-xs py-2">
-                                            🔄 Rescan
-                                        </button>
-                                        <button onClick={acceptScan} className="btn-primary flex-1 text-xs py-2 text-black bg-[#FFB800]">
-                                            ✅ Confirm & Fill
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <button
-                                    onClick={handleScanImage}
-                                    disabled={scanLoading}
-                                    className="btn-primary w-full py-2.5 text-black bg-[#FFB800] justify-center"
-                                >
-                                    {scanLoading ? "Analyzing..." : cameraStream ? "📸 Capture & Analyze" : "⚡ Run Simulated Scan"}
-                                </button>
-                            )}
-                        </div>
+              {scanResult ? (
+                <div className="rounded-2xl bg-neutral-900 border border-neutral-850 p-4 space-y-4">
+                  <div>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-[#FFB800]">
+                      Scanned Item
+                    </p>
+                    <h4 className="text-base font-bold text-white mt-0.5">{scanResult.name}</h4>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                    <div className="p-2 rounded-xl bg-neutral-950 border border-neutral-850">
+                      <span className="block font-extrabold text-white">
+                        {scanResult.calories}
+                      </span>
+                      <span className="text-[9px] text-neutral-500 font-bold uppercase">kcal</span>
                     </div>
+                    <div className="p-2 rounded-xl bg-neutral-950 border border-neutral-850">
+                      <span className="block font-extrabold text-emerald-400">
+                        {scanResult.protein}g
+                      </span>
+                      <span className="text-[9px] text-neutral-500 font-bold uppercase">Prot</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-neutral-950 border border-neutral-850">
+                      <span className="block font-extrabold text-amber-400">
+                        {scanResult.carbs}g
+                      </span>
+                      <span className="text-[9px] text-neutral-500 font-bold uppercase">Carb</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-neutral-950 border border-neutral-850">
+                      <span className="block font-extrabold text-rose-400">
+                        {scanResult.fat}g
+                      </span>
+                      <span className="text-[9px] text-neutral-500 font-bold uppercase">Fat</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={handleScanImage}
+                      className="btn-secondary flex-1 text-xs py-2 bg-neutral-800 border border-neutral-700 flex items-center justify-center gap-1"
+                    >
+                      <RefreshCw className="h-3 w-3" /> Rescan
+                    </button>
+                    <button
+                      onClick={acceptScan}
+                      className="btn-primary flex-1 text-xs py-2 text-black bg-[#FFB800] flex items-center justify-center gap-1"
+                    >
+                      <Check className="h-3.5 w-3.5" /> Confirm
+                    </button>
+                  </div>
                 </div>
-            )}
+              ) : (
+                <button
+                  onClick={handleScanImage}
+                  disabled={scanLoading}
+                  className="btn-primary w-full py-2.5 text-black bg-[#FFB800] flex items-center justify-center gap-1.5"
+                >
+                  {scanLoading ? (
+                    "Analyzing..."
+                  ) : cameraStream ? (
+                    <>
+                      <Camera className="h-4 w-4" /> Capture & Analyze
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" /> Run Simulated Scan
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-    );
+      )}
+    </div>
+  );
 }

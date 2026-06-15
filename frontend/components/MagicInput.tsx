@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { showToast } from "@/lib/toast";
+import { Mic, MicOff, Sparkles, Loader2, Trash2, Check, AlertCircle } from "lucide-react";
 
 type ParsedItem = {
     type: "EXERCISE" | "NUTRITION";
@@ -151,7 +152,7 @@ export default function MagicInput() {
 
             setText("");
             setStatus({ type: "success", message: `Successfully logged: ${savedNames.join(", ")}` });
-            showToast("✅ Logs added successfully!", "success");
+            showToast("Logs added successfully!", "success");
 
             // Reload page after a short delay to update dashboard statistics
             setTimeout(() => {
@@ -160,7 +161,7 @@ export default function MagicInput() {
 
         } catch (err: any) {
             setStatus({ type: "error", message: err.message || "Failed to save logs" });
-            showToast(`❌ Error: ${err.message || "Failed"}`, "error");
+            showToast(`Error: ${err.message || "Failed"}`, "error");
         } finally {
             setLoading(false);
         }
@@ -173,25 +174,25 @@ export default function MagicInput() {
     };
 
     return (
-        <div className="card rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
+        <div className="card rounded-2xl border border-neutral-800 bg-[#161616] p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                    <span className="relative flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span>
+                    <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FFB800] opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-[#FFB800]"></span>
                     </span>
-                    <h2 className="text-base font-bold text-gray-900 dark:text-white">AI Magic Input</h2>
+                    <h2 className="text-base font-bold text-white font-heading">AI Magic Input</h2>
                 </div>
-                <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">Natural Language</span>
+                <span className="text-[10px] font-bold text-neutral-450 uppercase tracking-widest">Natural Language</span>
             </div>
 
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            <p className="text-xs text-neutral-400 mb-3 leading-relaxed">
                 Log meals or workouts in simple English (e.g., <span className="italic">"had 2 eggs and toast"</span> or <span className="italic">"bench press 3 sets of 10 reps at 60kg"</span>).
             </p>
 
             <div className="relative">
                 <textarea
-                    className="w-full min-h-[90px] p-3 text-sm rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition resize-none"
+                    className="w-full min-h-[90px] p-3 text-sm rounded-xl border border-neutral-805 bg-neutral-900/50 text-white placeholder-neutral-500 focus:outline-none focus:border-[#FFB800] transition resize-none"
                     placeholder="Describe your workout or food..."
                     value={text}
                     onChange={(e) => setText(e.target.value)}
@@ -204,64 +205,63 @@ export default function MagicInput() {
                     className={`absolute bottom-3 right-3 flex h-8 w-8 items-center justify-center rounded-lg border transition ${
                         listening
                             ? "bg-red-500 text-white border-red-500 animate-pulse"
-                            : "bg-white dark:bg-gray-850 text-gray-500 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800"
+                            : "bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white"
                     }`}
                     title={listening ? "Stop voice input" : "Start voice input"}
                     disabled={loading}
                 >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
-                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                        <line x1="12" x2="12" y1="19" y2="22"/>
-                    </svg>
+                    {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                 </button>
             </div>
 
             <div className="flex items-center justify-between mt-4">
-                <span className="text-[10px] text-gray-400 dark:text-gray-500">Press Ctrl+Enter to submit</span>
+                <span className="text-[10px] text-neutral-500">Press Ctrl+Enter to submit</span>
                 <div className="flex gap-2">
                     <button
                         onClick={() => setText("")}
-                        className="px-3 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
+                        className="px-3 py-1.5 text-xs font-semibold text-neutral-450 hover:text-white hover:bg-neutral-905 rounded-lg transition"
                         disabled={loading || !text}
                     >
                         Clear
                     </button>
                     <button
-                        onClick={handleLog}
-                        className="btn-primary text-xs py-1.5 px-4"
+                        onClick={() => void handleLog()}
+                        className="btn-primary bg-[#FFB800] text-black text-xs font-bold py-1.5 px-4 rounded-lg hover:shadow-[0_0_15px_rgba(255,184,0,0.25)] flex items-center gap-1.5 transition-all disabled:opacity-50"
                         disabled={loading || !text.trim()}
                     >
-                        Log with AI
+                        {loading ? (
+                            <>
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                <span>Logging...</span>
+                            </>
+                        ) : (
+                            <>
+                                <Sparkles className="h-3.5 w-3.5" />
+                                <span>Log with AI</span>
+                            </>
+                        )}
                     </button>
                 </div>
             </div>
 
             {status.message && (
                 <div
-                    className={`mt-4 p-3 rounded-lg text-xs font-medium flex items-center gap-2 ${
+                    className={`mt-4 p-3 rounded-xl text-xs font-semibold flex items-center gap-2 border ${
                         status.type === "loading"
-                            ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400 border border-indigo-100/50 dark:border-indigo-900/30"
+                            ? "bg-[#FFB800]/5 text-[#FFB800] border-[#FFB800]/20"
                             : status.type === "success"
-                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-100/50 dark:border-emerald-900/30"
-                            : "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400 border border-red-100/50 dark:border-red-900/30"
+                            ? "bg-emerald-500/10 text-emerald-450 border-emerald-500/20"
+                            : "bg-red-500/10 text-red-400 border-red-500/20"
                     }`}
                 >
                     {status.type === "loading" && (
-                        <svg className="animate-spin h-3 w-3 text-indigo-500 dark:text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-[#FFB800]" />
+                    )}
+                    {status.type === "success" && (
+                        <Check className="h-3.5 w-3.5 text-emerald-500" />
+                    )}
+                    {status.type === "error" && (
+                        <AlertCircle className="h-3.5 w-3.5 text-red-500" />
                     )}
                     <span>{status.message}</span>
                 </div>

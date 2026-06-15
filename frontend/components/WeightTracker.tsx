@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Plus, Trash2, Calendar, Scale, Loader2, AlertCircle } from "lucide-react";
+import RevealOnScroll from "@/components/RevealOnScroll";
 
 type WeightEntry = {
     id: string;
@@ -114,12 +116,13 @@ export default function WeightTracker() {
     };
 
     return (
-        <section className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col h-[500px]">
-            <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 shrink-0">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                    Bodyweight Trend
+        <section className="bg-[#161616] rounded-2xl border border-neutral-800 overflow-hidden flex flex-col h-[500px]">
+            <div className="p-6 border-b border-neutral-850 shrink-0">
+                <h2 className="text-xl font-bold text-white flex items-center gap-1.5 font-heading">
+                    <Scale className="h-5 w-5 text-[#FFB800]" />
+                    <span>Bodyweight Trend</span>
                 </h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-neutral-450 mt-1 uppercase tracking-wider">
                     Last 10 weigh-ins
                 </p>
 
@@ -132,13 +135,13 @@ export default function WeightTracker() {
                         value={weightValue}
                         onChange={(e) => setWeightValue(e.target.value)}
                         placeholder="Weight"
-                        className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                        className="rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-white focus:border-[#FFB800] focus:outline-none"
                         required
                     />
                     <select
                         value={unit}
                         onChange={(e) => setUnit(e.target.value as "kg" | "lbs")}
-                        className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                        className="rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-white focus:border-[#FFB800] focus:outline-none"
                     >
                         <option value="kg">kg</option>
                         <option value="lbs">lbs</option>
@@ -147,60 +150,78 @@ export default function WeightTracker() {
                         type="date"
                         value={recordedDate}
                         onChange={(e) => setRecordedDate(e.target.value)}
-                        className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                        className="rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-white focus:border-[#FFB800] focus:outline-none"
                         required
                     />
                     <button
                         type="submit"
                         disabled={submitting}
-                        className="rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-60"
+                        className="rounded-xl bg-[#FFB800] hover:shadow-[0_0_15px_rgba(255,184,0,0.25)] text-black px-4 py-2 text-sm font-bold flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
                     >
-                        {submitting ? "Saving..." : "Log Weight"}
+                        {submitting ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-black" />
+                        ) : (
+                            <Plus className="h-4 w-4 text-black" />
+                        )}
+                        <span>Log</span>
                     </button>
                 </form>
 
-                {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+                {error && (
+                    <div className="mt-3 text-xs text-red-400 flex items-center gap-1">
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        <span>{error}</span>
+                    </div>
+                )}
             </div>
 
             <div className="overflow-y-auto flex-1 p-0">
                 {loading ? (
-                    <div className="p-8 text-center">
-                        <p className="text-gray-500 dark:text-gray-400 text-sm">Loading...</p>
+                    <div className="p-8 text-center flex items-center justify-center h-full">
+                        <Loader2 className="h-6 w-6 animate-spin text-[#FFB800]" />
                     </div>
                 ) : sortedEntries.length === 0 ? (
-                    <div className="p-8 text-center bg-white dark:bg-gray-800 h-full flex flex-col items-center justify-center">
-                        <p className="text-gray-500 dark:text-gray-400 text-sm">
+                    <div className="p-8 text-center h-full flex flex-col items-center justify-center">
+                        <AlertCircle className="h-8 w-8 text-neutral-600 mb-2" />
+                        <p className="text-neutral-450 text-xs">
                             No weight entries yet. Log your first weigh-in above.
                         </p>
                     </div>
                 ) : (
-                    <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+                    <ul className="divide-y divide-neutral-850">
                         {sortedEntries.map((entry) => (
                             <li
                                 key={entry.id}
-                                className="px-6 py-4 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                                className="px-6 py-4 flex justify-between items-center hover:bg-neutral-900/40 transition"
                             >
                                 <div className="flex items-center gap-4">
-                                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                    <span className="text-xs font-semibold text-neutral-400">
                                         {new Date(entry.recorded_at).toLocaleDateString([], {
                                             month: "long",
                                             day: "numeric",
                                             year: "numeric",
                                         })}
                                     </span>
-                                    <span className="text-base font-bold text-gray-900 dark:text-white">
+                                    <span className="text-sm font-bold text-white">
                                         {entry.value} {entry.unit}
                                     </span>
                                 </div>
 
                                 <button
                                     type="button"
-                                    onClick={() => handleDelete(entry.id)}
+                                    onClick={() => void handleDelete(entry.id)}
                                     disabled={deletingId === entry.id}
-                                    className="text-sm text-gray-500 hover:text-red-600 disabled:opacity-50"
+                                    className="text-xs font-semibold text-neutral-455 hover:text-red-400 disabled:opacity-50 hover:scale-105 transition flex items-center gap-1 p-1"
                                     aria-label="Delete weight entry"
                                 >
-                                    {deletingId === entry.id ? "Deleting..." : "🗑"}
+                                    {deletingId === entry.id ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                        <>
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                            <span>Delete</span>
+                                        </>
+                                    )}
                                 </button>
                             </li>
                         ))}

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Search, Brain, Award, Dumbbell, AlertCircle, ChevronRight } from "lucide-react";
+import RevealOnScroll from "@/components/RevealOnScroll";
 
 type ExerciseResult = {
     id: number;
@@ -16,20 +18,20 @@ type ExerciseResult = {
 const MUSCLE_FILTERS = ["All", "Chest", "Back", "Shoulders", "Arms", "Legs", "Core", "Cardio"] as const;
 
 const MUSCLE_BADGE_COLORS: Record<string, string> = {
-    Chest:     "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
-    Back:      "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
-    Shoulders: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-    Arms:      "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-    Legs:      "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-    Core:      "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
-    Cardio:    "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+    Chest:     "bg-rose-500/10 text-rose-450 border border-rose-500/20",
+    Back:      "bg-[#FFB800]/10 text-[#FFB800] border border-[#FFB800]/20",
+    Shoulders: "bg-blue-500/10 text-blue-400 border border-blue-500/20",
+    Arms:      "bg-purple-500/10 text-purple-400 border border-purple-500/20",
+    Legs:      "bg-amber-500/10 text-amber-400 border border-amber-500/20",
+    Core:      "bg-emerald-500/10 text-emerald-450 border border-emerald-500/20",
+    Cardio:    "bg-orange-500/10 text-orange-450 border border-orange-500/20",
 };
 
 function categoryBadge(category: string): string {
     const key = Object.keys(MUSCLE_BADGE_COLORS).find(
         (k) => category.toLowerCase().includes(k.toLowerCase())
     );
-    return key ? MUSCLE_BADGE_COLORS[key] : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
+    return key ? MUSCLE_BADGE_COLORS[key] : "bg-neutral-800 text-neutral-300 border border-neutral-700";
 }
 
 export default function ExercisesPage() {
@@ -62,29 +64,27 @@ export default function ExercisesPage() {
             {/* Page header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Exercise Library</h1>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white font-heading">Exercise Library</h1>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-450">
                         Browse and search 800+ exercises filtered by muscle group
                     </p>
                 </div>
             </div>
 
             {/* Search + filters */}
-            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+            <div className="rounded-2xl border border-neutral-800 bg-[#161616] p-4 shadow-sm">
                 <div className="relative">
-                    <svg className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-                    </svg>
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-neutral-500" />
                     <input
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search exercises..."
-                        className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        placeholder="Search exercises (e.g. barbell row)..."
+                        className="w-full rounded-xl border border-neutral-850 bg-neutral-900 py-2.5 pl-9 pr-4 text-sm text-white placeholder-neutral-500 focus:border-[#FFB800] focus:outline-none"
                     />
                 </div>
 
                 {/* Pill filters — horizontally scrollable on mobile */}
-                <div className="mt-4 flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden pb-0.5">
+                <div className="mt-4 flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden pb-1">
                     {MUSCLE_FILTERS.map((filter) => {
                         const active = filter === activeMuscle;
                         return (
@@ -92,10 +92,10 @@ export default function ExercisesPage() {
                                 key={filter}
                                 type="button"
                                 onClick={() => setActiveMuscle(filter)}
-                                className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-150 ${
+                                className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition-all duration-150 ${
                                     active
-                                        ? "bg-indigo-600 text-white"
-                                        : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                        ? "bg-[#FFB800] text-black"
+                                        : "bg-neutral-900 text-neutral-400 hover:bg-neutral-850 hover:text-white"
                                 }`}
                             >
                                 {filter}
@@ -108,60 +108,63 @@ export default function ExercisesPage() {
             {loading ? (
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
                     {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="h-48 animate-pulse rounded-xl border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800" />
+                        <div key={i} className="h-44 animate-pulse rounded-2xl border border-neutral-850 bg-neutral-900" />
                     ))}
                 </div>
             ) : results.length === 0 ? (
-                <div className="rounded-xl border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
-                    <p className="text-2xl">🧠</p>
-                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">No exercises found. Try a different search.</p>
+                <div className="rounded-2xl border border-neutral-800 bg-[#161616] p-8 text-center">
+                    <AlertCircle className="h-8 w-8 text-neutral-600 mx-auto mb-2" />
+                    <p className="text-sm text-neutral-450">No exercises found. Try a different search.</p>
                     <Link href="/dashboard/workouts/new"
-                        className="mt-4 inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+                        className="mt-4 inline-flex rounded-xl bg-[#FFB800] px-4 py-2 text-xs font-bold text-black hover:shadow-[0_0_15px_rgba(255,184,0,0.2)] transition">
                         Create a Workout
                     </Link>
                 </div>
             ) : (
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+                <RevealOnScroll className="grid grid-cols-2 gap-4 md:grid-cols-3">
                     {results.map((exercise) => (
                         <article key={`${exercise.id}-${exercise.name}`}
-                            className="relative flex h-full flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
+                            className="relative flex h-full flex-col rounded-2xl border border-neutral-850 bg-[#161616] p-5 hover:border-neutral-700 transition-all hover:scale-[1.02] justify-between">
 
-                            {/* Muscle group badge — top right */}
-                            <span className={`absolute right-3 top-3 rounded-full px-2 py-0.5 text-[10px] font-semibold ${categoryBadge(exercise.category)}`}>
-                                {exercise.category}
-                            </span>
+                            <div>
+                                <div className="flex items-start justify-between gap-3 mb-2">
+                                    <h2 className="text-sm font-bold text-white leading-snug">
+                                        {exercise.name}
+                                    </h2>
+                                    <span className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-[9px] font-semibold ${categoryBadge(exercise.category)}`}>
+                                        {exercise.category}
+                                    </span>
+                                </div>
 
-                            <h2 className="pr-16 text-sm font-semibold text-gray-900 dark:text-white">
-                                {exercise.name}
-                            </h2>
+                                <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">
+                                    {exercise.muscles.length > 0 ? exercise.muscles.join(", ") : "No primary muscles"}
+                                </p>
 
-                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                {exercise.muscles.length > 0 ? exercise.muscles.join(", ") : "No primary muscles listed"}
-                            </p>
+                                <div className="mt-2.5 flex flex-wrap gap-1">
+                                    {exercise.equipment.length > 0 ? (
+                                        exercise.equipment.map((item) => (
+                                            <span key={item}
+                                                className="rounded-md bg-neutral-900 border border-neutral-850 px-2 py-0.5 text-[9px] text-neutral-400">
+                                                {item}
+                                            </span>
+                                        ))
+                                    ) : (
+                                        <span className="rounded-md bg-neutral-900 border border-neutral-850 px-2 py-0.5 text-[9px] text-neutral-505">No equipment</span>
+                                    )}
+                                </div>
 
-                            <div className="mt-2 flex flex-wrap gap-1">
-                                {exercise.equipment.length > 0 ? (
-                                    exercise.equipment.map((item) => (
-                                        <span key={item}
-                                            className="rounded-md bg-gray-100 px-2 py-0.5 text-[10px] text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                                            {item}
-                                        </span>
-                                    ))
-                                ) : (
-                                    <span className="rounded-md bg-gray-100 px-2 py-0.5 text-[10px] text-gray-500 dark:bg-gray-700 dark:text-gray-400">No equipment</span>
-                                )}
+                                <p className="mt-3 line-clamp-3 text-xs text-neutral-400 leading-relaxed">
+                                    {exercise.description || "No description available."}
+                                </p>
                             </div>
 
-                            <p className="mt-3 line-clamp-2 flex-1 text-xs text-gray-600 dark:text-gray-300">
-                                {exercise.description || "No description available."}
-                            </p>
-
-                            <span className="mt-4 text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400 cursor-pointer">
-                                View details →
+                            <span className="mt-4 text-xs font-bold text-[#FFB800] hover:underline cursor-pointer flex items-center gap-0.5 self-start">
+                                <span>View details</span>
+                                <ChevronRight className="h-3 w-3" />
                             </span>
                         </article>
                     ))}
-                </div>
+                </RevealOnScroll>
             )}
         </div>
     );

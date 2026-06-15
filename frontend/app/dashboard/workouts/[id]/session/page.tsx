@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Clock, Check, Award, AlertCircle, Timer, SkipForward, ChevronRight, Play } from "lucide-react";
+import RevealOnScroll from "@/components/RevealOnScroll";
 
 type WorkoutExercise = {
     workout_exercise_id: string;
@@ -308,26 +310,27 @@ export default function WorkoutSessionPage({
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-green-600" />
+            <div className="min-h-screen flex items-center justify-center bg-neutral-950">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-neutral-800 border-t-[#FFB800]" />
             </div>
         );
     }
 
     if (!loading && exercises.length === 0 && !isComplete) {
         return (
-            <div className="min-h-screen max-w-3xl mx-auto px-4 py-10 text-center">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+            <div className="min-h-screen max-w-3xl mx-auto px-4 py-10 text-center flex flex-col justify-center items-center">
+                <h1 className="text-3xl font-bold text-white mb-3">
                     {workoutTitle}
                 </h1>
-                <p className="text-gray-600 dark:text-gray-300 mb-6">
+                <p className="text-neutral-450 mb-6">
                     This workout has no exercises yet.
                 </p>
                 <Link
                     href={`/dashboard/workouts/${workoutId}`}
-                    className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-900 text-white hover:bg-gray-800"
+                    className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#FFB800] text-black font-bold hover:shadow-[0_0_15px_rgba(255,184,0,0.25)] transition"
                 >
-                    Back to Workout Detail
+                    <ArrowLeft className="h-4 w-4" />
+                    <span>Back to Workout Detail</span>
                 </Link>
             </div>
         );
@@ -336,28 +339,35 @@ export default function WorkoutSessionPage({
     if (isComplete) {
         return (
             <div className="min-h-screen max-w-3xl mx-auto px-4 py-10 flex items-center justify-center">
-                <div className="w-full bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-8 text-center">
-                    <div className="text-7xl mb-4">✅</div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
-                        Workout Complete!
-                    </h1>
+                <div className="w-full bg-[#161616] rounded-2xl border border-neutral-800 p-8 text-center space-y-6">
+                    <div className="flex justify-center">
+                        <div className="h-16 w-16 rounded-full bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center">
+                            <Check className="h-8 w-8 text-emerald-450" />
+                        </div>
+                    </div>
+                    <div>
+                        <h1 className="text-3xl font-black text-white font-heading">
+                            Workout Complete!
+                        </h1>
+                        <p className="text-sm text-neutral-450 mt-1">Excellent performance. Your data has been synced.</p>
+                    </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                        <div className="rounded-xl bg-gray-50 dark:bg-gray-900 p-4">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Total Sets</p>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        <div className="rounded-xl bg-neutral-900 border border-neutral-850 p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-neutral-450">Total Sets</p>
+                            <p className="text-2xl font-black text-white mt-1">
                                 {completedSets}
                             </p>
                         </div>
-                        <div className="rounded-xl bg-gray-50 dark:bg-gray-900 p-4">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Exercises</p>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        <div className="rounded-xl bg-neutral-900 border border-neutral-850 p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-neutral-450">Exercises</p>
+                            <p className="text-2xl font-black text-white mt-1">
                                 {exercises.length}
                             </p>
                         </div>
-                        <div className="rounded-xl bg-gray-50 dark:bg-gray-900 p-4">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Time</p>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        <div className="rounded-xl bg-neutral-900 border border-neutral-850 p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-neutral-450">Time</p>
+                            <p className="text-2xl font-black text-white mt-1">
                                 {formatMs(elapsedSeconds)}
                             </p>
                         </div>
@@ -365,9 +375,10 @@ export default function WorkoutSessionPage({
 
                     <Link
                         href="/dashboard/workouts"
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition"
+                        className="inline-flex items-center gap-1.5 px-6 py-3 bg-[#FFB800] text-black font-bold rounded-xl hover:shadow-[0_0_15px_rgba(255,184,0,0.25)] transition"
                     >
-                        Back to Workouts
+                        <span>Back to Workouts</span>
+                        <ChevronRight className="h-4 w-4" />
                     </Link>
                 </div>
             </div>
@@ -375,76 +386,76 @@ export default function WorkoutSessionPage({
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+        <div className="min-h-screen bg-neutral-950 text-white">
             <div className="max-w-4xl mx-auto px-4 py-8">
-                <div className="flex items-start justify-between gap-4 mb-4">
+                <div className="flex items-start justify-between gap-4 mb-6">
                     <div>
-                        <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
-                            Live Session
+                        <p className="text-xs font-bold uppercase tracking-wider text-neutral-450 mb-1">
+                            Active Workout Session
                         </p>
-                        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+                        <h1 className="text-2xl md:text-3xl font-bold text-white font-heading">
                             {workoutTitle}
                         </h1>
                     </div>
-                    <div className="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-4 py-3 min-w-32 text-right">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Elapsed</p>
-                        <p className="text-xl font-semibold text-gray-900 dark:text-white tabular-nums">
+                    <div className="rounded-xl bg-[#161616] border border-neutral-800 px-4 py-3 min-w-32 text-right">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-450">Elapsed</p>
+                        <p className="text-xl font-bold text-[#FFB800] tabular-nums mt-0.5">
                             {formatHms(elapsedSeconds)}
                         </p>
                     </div>
                 </div>
 
                 <div className="mb-8">
-                    <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300 mb-2">
+                    <div className="flex justify-between text-xs text-neutral-400 mb-2">
                         <span>
                             Exercise {Math.min(currentExIndex + 1, exercises.length)} of {exercises.length}
                         </span>
-                        <span>{progressPercent}%</span>
+                        <span>{progressPercent}% Complete</span>
                     </div>
-                    <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden">
+                    <div className="h-2 w-full rounded-full bg-neutral-900 overflow-hidden">
                         <div
-                            className="h-full bg-green-600 transition-all duration-300"
+                            className="h-full bg-[#FFB800] transition-all duration-300"
                             style={{ width: `${progressPercent}%` }}
                         />
                     </div>
                 </div>
 
                 {error && (
-                    <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-200 border border-red-200 dark:border-red-800">
+                    <div className="mb-6 p-4 rounded-xl border border-red-905 bg-red-950/20 text-red-400">
                         {error}
                     </div>
                 )}
 
                 {currentExercise && (
-                    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 md:p-8 shadow-sm">
+                    <div className="bg-[#161616] border border-neutral-800 rounded-2xl p-6 md:p-8 shadow-sm">
                         <div className="mb-6">
-                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                            <h2 className="text-2xl font-bold text-white mb-2">
                                 {currentExercise.name}
                             </h2>
-                            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                                <span className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-300">
+                                <span className="px-2.5 py-1 rounded-full bg-neutral-900 border border-neutral-850">
                                     {currentExercise.muscle_group || "General"}
                                 </span>
-                                <span className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                                <span className="px-2.5 py-1 rounded-full bg-neutral-900 border border-neutral-850">
                                     {currentExercise.difficulty || "standard"}
                                 </span>
-                                <span className="px-2.5 py-1 rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200 font-medium">
+                                <span className="px-2.5 py-1 rounded-full bg-[#FFB800]/10 border border-[#FFB800]/20 text-[#FFB800] font-semibold">
                                     Target: {currentExercise.sets_target} x {currentExercise.reps_target}
                                 </span>
                             </div>
                         </div>
 
                         {!isCurrentExerciseComplete && (
-                            <div className="space-y-4">
-                                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                            <div className="space-y-5 border-t border-neutral-850 pt-5">
+                                <div className="text-lg font-bold text-white">
                                     Set {currentSet} of {currentExercise.sets_target}
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
+                                    <div className="space-y-1.5">
                                         <label
                                             htmlFor="reps"
-                                            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                                            className="block text-sm font-semibold text-neutral-305"
                                         >
                                             Reps
                                         </label>
@@ -454,14 +465,14 @@ export default function WorkoutSessionPage({
                                             min={1}
                                             value={repsInput}
                                             onChange={(e) => setRepsInput(Number(e.target.value))}
-                                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-white"
+                                            className="input-field bg-neutral-900 border-neutral-800 text-white focus:border-[#FFB800]"
                                         />
                                     </div>
 
-                                    <div>
+                                    <div className="space-y-1.5">
                                         <label
                                             htmlFor="weight"
-                                            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                                            className="block text-sm font-semibold text-neutral-350"
                                         >
                                             Weight (kg)
                                         </label>
@@ -473,7 +484,7 @@ export default function WorkoutSessionPage({
                                             value={weightInput}
                                             onChange={(e) => setWeightInput(e.target.value)}
                                             placeholder="bodyweight"
-                                            className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-white"
+                                            className="input-field bg-neutral-900 border-neutral-800 text-white focus:border-[#FFB800]"
                                         />
                                     </div>
                                 </div>
@@ -482,7 +493,7 @@ export default function WorkoutSessionPage({
                                     type="button"
                                     onClick={handleCompleteSet}
                                     disabled={restTimerActive}
-                                    className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed transition"
+                                    className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 rounded-xl bg-[#FFB800] text-black font-bold hover:shadow-[0_0_15px_rgba(255,184,0,0.25)] disabled:opacity-60 disabled:cursor-not-allowed transition"
                                 >
                                     Complete Set
                                 </button>
@@ -490,21 +501,21 @@ export default function WorkoutSessionPage({
                         )}
 
                         {isCurrentExerciseComplete && (
-                            <div className="mt-2 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-                                <p className="text-green-800 dark:text-green-200 font-medium">
-                                    Exercise complete. Great work.
+                            <div className="mt-2 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                                <p className="text-emerald-400 font-semibold flex items-center gap-1.5 text-sm">
+                                    <Check className="h-4 w-4" /> Exercise complete. Great work!
                                 </p>
                             </div>
                         )}
 
-                        <div className="mt-6 flex flex-wrap gap-3">
+                        <div className="mt-6 flex flex-wrap gap-3 border-t border-neutral-850 pt-5">
                             {canGoNextExercise && (
                                 <button
                                     type="button"
                                     onClick={handleNextExercise}
-                                    className="inline-flex items-center px-6 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+                                    className="inline-flex items-center px-6 py-3 rounded-xl bg-neutral-900 border border-neutral-800 text-white font-semibold hover:bg-neutral-850 transition"
                                 >
-                                    Next Exercise →
+                                    Next Exercise
                                 </button>
                             )}
 
@@ -513,7 +524,7 @@ export default function WorkoutSessionPage({
                                     type="button"
                                     onClick={handleFinishWorkout}
                                     disabled={isFinishing}
-                                    className="inline-flex items-center px-6 py-3 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed transition"
+                                    className="inline-flex items-center px-6 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed transition"
                                 >
                                     {isFinishing ? "Finishing..." : "Finish Workout"}
                                 </button>
@@ -524,23 +535,25 @@ export default function WorkoutSessionPage({
             </div>
 
             {restTimerActive && (
-                <div className="fixed inset-0 z-50 bg-black/65 flex items-center justify-center px-4">
-                    <div className="w-full max-w-md rounded-2xl bg-white dark:bg-gray-900 p-8 text-center shadow-2xl border border-gray-200 dark:border-gray-700">
-                        <p className="text-sm uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
-                            Rest Time
+                <div className="fixed inset-0 z-50 bg-black/65 flex items-center justify-center px-4 backdrop-blur-xs">
+                    <div className="w-full max-w-md rounded-2xl bg-neutral-900 p-8 text-center shadow-2xl border border-neutral-800">
+                        <p className="text-xs uppercase tracking-wide text-neutral-400 mb-2 flex items-center justify-center gap-1">
+                            <Timer className="h-4 w-4 text-[#FFB800]" />
+                            <span>Rest Time</span>
                         </p>
-                        <div className="text-7xl font-bold text-gray-900 dark:text-white tabular-nums mb-4">
-                            {restSecondsLeft}
+                        <div className="text-7xl font-bold text-white tabular-nums mb-4">
+                            {restSecondsLeft}s
                         </div>
-                        <p className="text-gray-600 dark:text-gray-300 mb-6">
+                        <p className="text-neutral-450 mb-6 text-sm">
                             Catch your breath. Next set starts automatically.
                         </p>
                         <button
                             type="button"
                             onClick={handleSkipRest}
-                            className="inline-flex items-center px-5 py-3 rounded-xl bg-gray-900 text-white hover:bg-gray-800 transition"
+                            className="inline-flex items-center gap-1.5 px-5 py-3 rounded-xl bg-[#FFB800] text-black font-bold hover:shadow-[0_0_15px_rgba(255,184,0,0.2)] transition"
                         >
-                            Skip Rest
+                            <SkipForward className="h-4 w-4" />
+                            <span>Skip Rest</span>
                         </button>
                     </div>
                 </div>

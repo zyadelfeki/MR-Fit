@@ -311,4 +311,31 @@
     border-top: 1px solid var(--color-border);
     margin-block: 1.5rem;
   }
+
+  /* ─── Reveal & Stagger Animations ────────────────────────────── */
+  .reveal-init {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal-active {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .stagger-1 { transition-delay: 50ms; }
+  .stagger-2 { transition-delay: 100ms; }
+  .stagger-3 { transition-delay: 150ms; }
+  .stagger-4 { transition-delay: 200ms; }
+  .stagger-5 { transition-delay: 250ms; }
+
+  .card-premium-glow {
+    transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+  }
+  .card-premium-glow:hover {
+    border-color: var(--brand-primary) !important;
+    box-shadow: 0 0 20px rgba(255, 184, 0, 0.15) !important;
+    transform: translateY(-2px);
+  }
 }
+
