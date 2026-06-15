@@ -75,14 +75,14 @@ export default async function DashboardPage() {
 
   // Profile
   const profileRes = await pool.query(
-    `SELECT display_name, weight_kg, fitness_goal, calorie_goal, protein_goal FROM profiles WHERE user_id = $1`,
+    `SELECT display_name, weight_kg, fitness_goal FROM profiles WHERE user_id = $1`,
     [userId]
   );
   const profile = profileRes.rows[0] ?? null;
   if (!profile) redirect("/onboarding");
 
-  const calorieGoal = Number(profile.calorie_goal ?? 2000);
-  const proteinGoal = Number(profile.protein_goal ?? 150);
+  const calorieGoal = 2000;
+  const proteinGoal = 150;
 
   // Workouts this week
   const startOfWeek = new Date();
