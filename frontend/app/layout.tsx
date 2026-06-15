@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   title: { default: "MR.FIT", template: "%s | MR.FIT" },
   description:
     "Your AI-powered fitness companion. Track workouts, nutrition, and get personalized coaching.",
-  icons: { icon: "/logo.jpg" },
+  icons: { icon: "/logo.png" },
 };
 
 export const viewport: Viewport = {

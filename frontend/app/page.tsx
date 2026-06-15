@@ -75,7 +75,7 @@ export default function HomePage() {
       {/* ── Nav ─────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/90 backdrop-blur dark:border-gray-800 dark:bg-gray-950/90">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3 md:px-10">
-          <div className="inline-flex rounded-lg bg-gray-900 px-3 py-1.5 dark:bg-white">
+          <div className="inline-flex rounded-lg bg-gray-950 px-3 py-1.5 dark:bg-transparent dark:px-0 dark:py-0">
             <Logo variant="full" height={32} />
           </div>
           <div className="flex items-center gap-3">

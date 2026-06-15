@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import Toast from "@/components/Toast";
 import WelcomeBanner from "@/components/WelcomeBanner";
+import Logo from "@/components/Logo";
 
 const Icons: Record<string, JSX.Element> = {
   dashboard: (
@@ -201,13 +202,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const Sidebar = () => (
     <div className="flex h-full flex-col bg-white dark:bg-gray-900">
       {/* Brand */}
-      <div className="flex h-16 items-center gap-3 border-b border-gray-200 px-5 dark:border-gray-700">
-        <div className="flex items-center justify-center rounded-lg bg-gray-900 p-2 dark:bg-indigo-600">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M6 4v16M18 4v16M3 8h3M18 8h3M3 16h3M18 16h3M6 12h12" />
-          </svg>
+      <div className="flex h-16 items-center border-b border-gray-200 px-5 dark:border-gray-700">
+        <div className="inline-flex rounded-lg bg-gray-950 px-2.5 py-1.5 dark:bg-transparent dark:px-0 dark:py-0">
+          <Logo variant="full" height={24} />
         </div>
-        <span className="text-base font-bold tracking-tight text-gray-900 dark:text-white">MR-Fit</span>
       </div>
 
       {/* User pill + plan badge */}
@@ -344,13 +342,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile header */}
         <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 dark:border-gray-700 dark:bg-gray-900 md:hidden">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center rounded-lg bg-gray-900 p-1.5 dark:bg-indigo-600">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M6 4v16M18 4v16M3 8h3M18 8h3M3 16h3M18 16h3M6 12h12" />
-              </svg>
+          <div className="flex items-center">
+            <div className="inline-flex rounded-lg bg-gray-950 px-2 py-1 dark:bg-transparent dark:px-0 dark:py-0">
+              <Logo variant="full" height={22} />
             </div>
-            <span className="text-sm font-bold text-gray-900 dark:text-white">MR-Fit</span>
           </div>
           <button onClick={() => setIsMobileMenuOpen(true)} className="rounded-md p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Open menu">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
