@@ -43,7 +43,7 @@ export default function WearablesPage() {
 
   useEffect(() => {
     if (!session?.user?.id) return;
-    fetch(`http://localhost:8000/wearables/latest/${session.user.id}`)
+    fetch(`/api/wearables`, { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
         setSnapshots(d.data || []);
@@ -55,14 +55,14 @@ export default function WearablesPage() {
 
   return (
     <div className="max-w-3xl mx-auto py-10 px-4">
-      <h1 className="text-2xl font-bold mb-2">Wearable Device</h1>
-      <p className="text-muted-foreground mb-8">
+      <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Wearable Device</h1>
+      <p className="text-gray-600 dark:text-gray-300 mb-8">
         Connect your Apple Watch, Garmin, Oura Ring, or Whoop via{" "}
         <a
           href="http://localhost:4000"
           target="_blank"
           rel="noopener noreferrer"
-          className="underline text-primary"
+          className="underline text-indigo-600 dark:text-indigo-400"
         >
           Open Wearables
         </a>
@@ -87,9 +87,9 @@ export default function WearablesPage() {
 
       {/* Setup instructions if not connected */}
       {!connected && !loading && (
-        <div className="border rounded-xl p-6 bg-muted/40 mb-8">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 mb-8 dark:border-gray-700 dark:bg-gray-800">
           <h2 className="font-semibold mb-3">How to connect</h2>
-          <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+          <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600 dark:text-gray-300">
             <li>
               Make sure Docker is running, then run:{" "}
               <code className="bg-muted px-1 rounded">cd open-wearables && docker compose up -d</code>
@@ -113,25 +113,25 @@ export default function WearablesPage() {
 
       {/* Data cards */}
       {loading ? (
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-gray-500 dark:text-gray-400">Loading...</p>
       ) : (
         <div className="grid gap-4">
           {snapshots.map((snap) => (
-            <div key={snap.data_type} className="border rounded-xl p-5">
+            <div key={snap.data_type} className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
               <h2 className="font-semibold text-lg mb-3">
                 {TYPE_LABELS[snap.data_type] ?? snap.data_type}
               </h2>
               <div className="grid grid-cols-2 gap-x-6 gap-y-2">
                 {Object.entries(snap.payload).map(([key, val]) => (
                   <div key={key} className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
+                    <span className="text-gray-500 dark:text-gray-400">
                       {FIELD_LABELS[key] ?? key}
                     </span>
-                    <span className="font-medium">{String(val)}</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{String(val)}</span>
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground mt-3">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
                 Last updated:{" "}
                 {new Date(snap.recorded_at).toLocaleString()}
               </p>

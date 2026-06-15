@@ -98,9 +98,12 @@ export default async function ProgressPage() {
 
     try {
         const r = await pool.query(
-            `SELECT logged_at, weight_kg FROM weight_logs
-             WHERE user_id = $1 AND logged_at >= (CURRENT_DATE - INTERVAL '30 days')
-             ORDER BY logged_at ASC`,
+            `SELECT recorded_at AS logged_at, value AS weight_kg
+             FROM wearable_data
+             WHERE user_id = $1
+               AND metric = 'weight_kg'
+               AND recorded_at >= (CURRENT_DATE - INTERVAL '30 days')
+             ORDER BY recorded_at ASC`,
             [userId]
         );
         weightRows = r.rows as WeightLog[];
@@ -119,12 +122,14 @@ export default async function ProgressPage() {
 
     try {
         const r = await pool.query(
-            `SELECT exercise_name, MAX(weight_kg) AS max_weight, MAX(reps) AS max_reps,
+            `SELECT e.name AS exercise_name,
+                    MAX(wl.weight_kg) AS max_weight,
+                    MAX(wl.reps_completed) AS max_reps,
                     MAX(wl.logged_at) AS achieved_at
-             FROM workout_log_exercises wle
-             JOIN workout_logs wl ON wl.id = wle.workout_log_id
-             WHERE wl.user_id = $1 AND weight_kg IS NOT NULL
-             GROUP BY exercise_name ORDER BY achieved_at DESC LIMIT 10`,
+             FROM workout_logs wl
+             JOIN exercises e ON e.id = wl.exercise_id
+             WHERE wl.user_id = $1 AND wl.weight_kg IS NOT NULL
+             GROUP BY e.name ORDER BY achieved_at DESC LIMIT 10`,
             [userId]
         );
         prRows = r.rows as PersonalRecord[];
