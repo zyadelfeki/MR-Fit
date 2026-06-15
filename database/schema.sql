@@ -29,8 +29,11 @@ create table if not exists users (
   created_at  timestamptz not null    default now(),
   updated_at  timestamptz not null    default now(),
 
-  auth_id     uuid        not null unique,   -- foreign key to auth.users.id
+  auth_id     uuid        unique,   -- optional foreign key to auth.users.id when using Supabase Auth
   email       text        not null unique,
+  password_hash text,
+  security_question text,
+  security_answer_hash text,
   role        text        not null default 'user'
                           check (role in ('user', 'trainer', 'admin'))
 );

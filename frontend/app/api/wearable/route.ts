@@ -56,8 +56,8 @@ export async function POST(req: Request) {
         }
 
         await pool.query(
-            `INSERT INTO wearable_data (user_id, metric, value, unit, recorded_at)
-       VALUES ($1, 'weight_kg', $2, $3, COALESCE($4::timestamptz, NOW()))`,
+            `INSERT INTO wearable_data (user_id, source, metric, value, unit, recorded_at)
+       VALUES ($1, 'manual', 'weight_kg', $2, $3, COALESCE($4::timestamptz, NOW()))`,
             [session.user.id, value, unit, recordedAt]
         );
 
