@@ -48,7 +48,7 @@ export async function POST(req: Request) {
                 title,
                 scheduled_at ? new Date(scheduled_at).toISOString() : null,
                 duration_min ? Number(duration_min) : null,
-                source || "custom",
+                source === "ai" || source === "trainer" || source === "user" ? source : "user",
             ]
         );
 
