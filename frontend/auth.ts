@@ -18,12 +18,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     const db = createAdminClient();
 
                     // Use LEFT JOIN so login works even if profile doesn't exist yet
+                    const email = String(credentials.email).trim().toLowerCase();
                     const res = await db.query(
                         `SELECT u.id, u.email, u.password_hash, p.display_name
                FROM users u
                LEFT JOIN profiles p ON p.user_id = u.id
-               WHERE u.email = $1`,
-                        [credentials.email]
+               WHERE LOWER(u.email) = LOWER($1)`,
+                        [email]
                     );
 
                     const user = res.rows[0];
