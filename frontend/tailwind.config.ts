@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -21,36 +22,9 @@ const config: Config = {
           900: "#14532d",
           950: "#052e16",
         },
-        indigo: {
-          50: "#FFFDF0",
-          100: "#FEF8C3",
-          200: "#FEF08A",
-          300: "#FDE047",
-          400: "#FACC15",
-          500: "#EAB308",
-          600: "#FFB800",
-          700: "#CC9400",
-          800: "#854D0E",
-          900: "#713F12",
-          950: "#422006",
-        },
-        purple: {
-          50: "#FFFDF0",
-          100: "#FEF8C3",
-          200: "#FEF08A",
-          300: "#FDE047",
-          400: "#FACC15",
-          500: "#EAB308",
-          600: "#FFB800",
-          700: "#CC9400",
-          800: "#854D0E",
-          900: "#713F12",
-          950: "#422006",
-        },
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
-        heading: ["var(--font-barlow-condensed)", "sans-serif"],
+        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
       },
     },
   },
