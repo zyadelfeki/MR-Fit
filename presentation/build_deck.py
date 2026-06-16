@@ -473,5 +473,6 @@ footer(s, pageno())
 # ----------------------------------------------------------------------------
 out = os.path.join(HERE, "MR-Fit_Graduation_Defense.pptx")
 prs.save(out)
-print(f"✅ Saved: {out}")
+print(f"Saved: {out}")
 print("Next: open in PowerPoint, select all slides, Transitions > Morph > Apply To All.")
+
