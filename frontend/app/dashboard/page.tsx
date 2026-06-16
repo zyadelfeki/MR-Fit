@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import pool from "@/lib/db";
+import { withDb } from "@/lib/db";
 import Link from "next/link";
 import MagicInput from "@/components/MagicInput";
 import {
@@ -58,56 +58,92 @@ export default async function DashboardPage() {
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
-  // Profile
-  const profileRes = await pool.query(
-    `SELECT display_name, weight_kg, fitness_goal FROM profiles WHERE user_id = $1`,
-    [userId]
-  );
-  const profile = profileRes.rows[0] ?? null;
-  if (!profile) redirect("/onboarding");
-
   const calorieGoal = 2000;
   const proteinGoal = 150;
 
-  // Workouts this week
   const startOfWeek = new Date();
   startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
   startOfWeek.setHours(0, 0, 0, 0);
-  const workoutsRes = await pool.query(
-    `SELECT COUNT(*) AS count FROM workout_logs WHERE user_id = $1 AND logged_at >= $2`,
-    [userId, startOfWeek.toISOString()]
-  );
-  const displayWorkouts = Number(workoutsRes.rows[0]?.count ?? 0);
+  const thirtyAgo = new Date();
+  thirtyAgo.setDate(thirtyAgo.getDate() - 30);
 
-  // Calories + protein today
-  const nutritionRes = await pool.query(
-    `SELECT
-       COALESCE(SUM(calories), 0)  AS total_calories,
-       COALESCE(SUM(protein_g), 0) AS total_protein
-     FROM nutrition_logs
-     WHERE user_id = $1
-       AND DATE(logged_at AT TIME ZONE 'UTC') = CURRENT_DATE`,
-    [userId]
-  );
-  const caloriesToday = Number(nutritionRes.rows[0]?.total_calories ?? 0);
-  const proteinToday  = Number(nutritionRes.rows[0]?.total_protein  ?? 0);
+  // Run all DB queries on a single fresh connection with auto-retry
+  const {
+    profile,
+    displayWorkouts,
+    caloriesToday,
+    proteinToday,
+    activityDates,
+    recentActivity,
+  } = await withDb(async (client) => {
+    const profileRes = await client.query(
+      `SELECT display_name, weight_kg, fitness_goal FROM profiles WHERE user_id = $1`,
+      [userId]
+    );
+    const _profile = profileRes.rows[0] ?? null;
 
-  // Streak
-  const thirtyAgo = new Date(); thirtyAgo.setDate(thirtyAgo.getDate() - 30);
-  const [wDates, nDates] = await Promise.all([
-    pool.query(
-      `SELECT DISTINCT DATE(logged_at AT TIME ZONE 'UTC') AS day FROM workout_logs  WHERE user_id=$1 AND logged_at>=$2`,
+    const workoutsRes = await client.query(
+      `SELECT COUNT(*) AS count FROM workout_logs WHERE user_id = $1 AND logged_at >= $2`,
+      [userId, startOfWeek.toISOString()]
+    );
+    const _displayWorkouts = Number(workoutsRes.rows[0]?.count ?? 0);
+
+    const nutritionRes = await client.query(
+      `SELECT
+         COALESCE(SUM(calories), 0)  AS total_calories,
+         COALESCE(SUM(protein_g), 0) AS total_protein
+       FROM nutrition_logs
+       WHERE user_id = $1
+         AND DATE(logged_at AT TIME ZONE 'UTC') = CURRENT_DATE`,
+      [userId]
+    );
+    const _caloriesToday = Number(nutritionRes.rows[0]?.total_calories ?? 0);
+    const _proteinToday  = Number(nutritionRes.rows[0]?.total_protein  ?? 0);
+
+    const wDatesRes = await client.query(
+      `SELECT DISTINCT DATE(logged_at AT TIME ZONE 'UTC') AS day FROM workout_logs WHERE user_id=$1 AND logged_at>=$2`,
       [userId, thirtyAgo.toISOString()]
-    ),
-    pool.query(
+    );
+    const nDatesRes = await client.query(
       `SELECT DISTINCT DATE(logged_at AT TIME ZONE 'UTC') AS day FROM nutrition_logs WHERE user_id=$1 AND logged_at>=$2`,
       [userId, thirtyAgo.toISOString()]
-    ),
-  ]);
-  const activityDates = new Set<string>();
-  [...wDates.rows, ...nDates.rows].forEach((r) => {
-    if (r.day) activityDates.add(new Date(r.day).toISOString().split("T")[0]);
+    );
+    const _activityDates = new Set<string>();
+    [...wDatesRes.rows, ...nDatesRes.rows].forEach((r) => {
+      if (r.day) _activityDates.add(new Date(r.day).toISOString().split("T")[0]);
+    });
+
+    const activityRes = await client.query(
+      `(SELECT 'workout' AS type, COALESCE(w.title, e.name, 'Workout') AS label, wl.logged_at
+         FROM workout_logs wl
+         LEFT JOIN workouts w ON w.id = wl.workout_id
+         LEFT JOIN exercises e ON e.id = wl.exercise_id
+         WHERE wl.user_id = $1
+         ORDER BY wl.logged_at DESC LIMIT 5)
+       UNION ALL
+       (SELECT 'nutrition' AS type, nl.food_name AS label, nl.logged_at
+         FROM nutrition_logs nl WHERE nl.user_id = $1
+         ORDER BY nl.logged_at DESC LIMIT 5)
+       ORDER BY logged_at DESC LIMIT 6`,
+      [userId]
+    );
+
+    return {
+      profile: _profile,
+      displayWorkouts: _displayWorkouts,
+      caloriesToday: _caloriesToday,
+      proteinToday: _proteinToday,
+      activityDates: _activityDates,
+      recentActivity: activityRes.rows as Array<{
+        type: "workout" | "nutrition";
+        label: string;
+        logged_at: string;
+      }>,
+    };
   });
+
+  if (!profile) redirect("/onboarding");
+
   let streak = 0;
   const checkDate = new Date(); checkDate.setUTCHours(0, 0, 0, 0);
   if (!activityDates.has(checkDate.toISOString().split("T")[0]))
@@ -115,27 +151,6 @@ export default async function DashboardPage() {
   while (activityDates.has(checkDate.toISOString().split("T")[0])) {
     streak++; checkDate.setUTCDate(checkDate.getUTCDate() - 1);
   }
-
-  // Recent activity
-  const activityRes = await pool.query(
-    `(SELECT 'workout' AS type, COALESCE(w.title, e.name, 'Workout') AS label, wl.logged_at
-       FROM workout_logs wl
-       LEFT JOIN workouts w ON w.id = wl.workout_id
-       LEFT JOIN exercises e ON e.id = wl.exercise_id
-       WHERE wl.user_id = $1
-       ORDER BY wl.logged_at DESC LIMIT 5)
-     UNION ALL
-     (SELECT 'nutrition' AS type, nl.food_name AS label, nl.logged_at
-       FROM nutrition_logs nl WHERE nl.user_id = $1
-       ORDER BY nl.logged_at DESC LIMIT 5)
-     ORDER BY logged_at DESC LIMIT 6`,
-    [userId]
-  );
-  const recentActivity = activityRes.rows as Array<{
-    type: "workout" | "nutrition";
-    label: string;
-    logged_at: string;
-  }>;
 
   const quoteIndex =
     (new Date().getDate() + new Date().getMonth() * 31) % DAILY_QUOTES.length;

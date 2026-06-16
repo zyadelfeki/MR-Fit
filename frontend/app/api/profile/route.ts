@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { createAdminClient } from "@/lib/db";
+import { withDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -27,16 +27,18 @@ export async function GET() {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const db = createAdminClient();
-    const res = await db.query(
-      `SELECT display_name, avatar_url, date_of_birth, gender,
-              height_cm, weight_kg, fitness_goal, fitness_level, updated_at
-         FROM profiles
-        WHERE user_id = $1`,
-      [userId]
+    const row = await withDb((client) =>
+      client
+        .query(
+          `SELECT display_name, avatar_url, date_of_birth, gender,
+                  height_cm, weight_kg, fitness_goal, fitness_level, updated_at
+             FROM profiles
+            WHERE user_id = $1`,
+          [userId]
+        )
+        .then((r) => r.rows[0] ?? null)
     );
-
-    return NextResponse.json({ profile: res.rows[0] ?? null });
+    return NextResponse.json({ profile: row });
   } catch (err) {
     console.error("GET /api/profile error:", err);
     return NextResponse.json({ error: "Failed to load profile" }, { status: 500 });
@@ -82,26 +84,28 @@ export async function PUT(req: Request) {
   }
 
   try {
-    const db = createAdminClient();
-    const res = await db.query(
-      `INSERT INTO profiles
-         (user_id, display_name, date_of_birth, gender, height_cm, weight_kg, fitness_goal, fitness_level)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       ON CONFLICT (user_id) DO UPDATE SET
-         display_name  = EXCLUDED.display_name,
-         date_of_birth = EXCLUDED.date_of_birth,
-         gender        = EXCLUDED.gender,
-         height_cm     = EXCLUDED.height_cm,
-         weight_kg     = EXCLUDED.weight_kg,
-         fitness_goal  = EXCLUDED.fitness_goal,
-         fitness_level = EXCLUDED.fitness_level,
-         updated_at    = now()
-       RETURNING display_name, avatar_url, date_of_birth, gender,
-                 height_cm, weight_kg, fitness_goal, fitness_level, updated_at`,
-      [userId, displayName, dateOfBirth, gender, heightCm, weightKg, fitnessGoal, fitnessLevel]
+    const row = await withDb((client) =>
+      client
+        .query(
+          `INSERT INTO profiles
+             (user_id, display_name, date_of_birth, gender, height_cm, weight_kg, fitness_goal, fitness_level)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           ON CONFLICT (user_id) DO UPDATE SET
+             display_name  = EXCLUDED.display_name,
+             date_of_birth = EXCLUDED.date_of_birth,
+             gender        = EXCLUDED.gender,
+             height_cm     = EXCLUDED.height_cm,
+             weight_kg     = EXCLUDED.weight_kg,
+             fitness_goal  = EXCLUDED.fitness_goal,
+             fitness_level = EXCLUDED.fitness_level,
+             updated_at    = now()
+           RETURNING display_name, avatar_url, date_of_birth, gender,
+                     height_cm, weight_kg, fitness_goal, fitness_level, updated_at`,
+          [userId, displayName, dateOfBirth, gender, heightCm, weightKg, fitnessGoal, fitnessLevel]
+        )
+        .then((r) => r.rows[0])
     );
-
-    return NextResponse.json({ success: true, profile: res.rows[0] });
+    return NextResponse.json({ success: true, profile: row });
   } catch (err) {
     console.error("PUT /api/profile error:", err);
     return NextResponse.json({ error: "Failed to save profile" }, { status: 500 });

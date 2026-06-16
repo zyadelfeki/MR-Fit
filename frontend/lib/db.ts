@@ -1,42 +1,69 @@
-import { Pool, Client } from "pg";
+import { Pool } from "pg";
 
-let pool: Pool | null = null;
+// Prevent multiple pool instances in Next.js hot-reload dev mode
+const globalForDb = globalThis as unknown as { pool: Pool | undefined };
 
-function getPool(): Pool {
-    if (!pool) {
-        pool = new Pool({
-            connectionString: process.env.DATABASE_URL,
-            max: 5,
-            idleTimeoutMillis: 30000,
-            connectionTimeoutMillis: 8000,
-        });
-        // Prevent unhandled pool errors from crashing the dev server
-        pool.on("error", (err) => {
-            console.error("[db] pool error:", err.message);
-        });
-    }
-    return pool;
+function createPool() {
+  const p = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: 5,
+    min: 0,                       // don't hold idle connections open
+    idleTimeoutMillis: 10000,     // release idle connections after 10 s
+    connectionTimeoutMillis: 10000,
+    keepAlive: true,              // send TCP keepalive packets
+    keepAliveInitialDelayMillis: 5000,
+  });
+
+  // Prevent unhandled pool errors from crashing the dev server
+  p.on("error", (err) => {
+    console.error("[db] pool client error:", err.message);
+  });
+
+  return p;
+}
+
+const pool = globalForDb.pool ?? createPool();
+
+if (process.env.NODE_ENV !== "production") {
+  globalForDb.pool = pool;
 }
 
 /**
- * For critical one-shot operations (e.g. registration) use a fresh Client
- * so we are never blocked by stale pool connections.
+ * Run `fn` with a fresh, dedicated client.
+ * The client is connected, used, then immediately released.
+ * Retries once on connection-terminated errors.
  */
-export async function withDb<T>(fn: (client: Client) => Promise<T>): Promise<T> {
-    const client = new Client({
-        connectionString: process.env.DATABASE_URL,
-        connectionTimeoutMillis: 8000,
-    });
-    await client.connect();
+export async function withDb<T>(fn: (client: import("pg").PoolClient) => Promise<T>): Promise<T> {
+  const attempt = async () => {
+    const client = await pool.connect();
     try {
-        return await fn(client);
+      return await fn(client);
     } finally {
-        await client.end();
+      client.release();
     }
+  };
+
+  try {
+    return await attempt();
+  } catch (err: any) {
+    const msg: string = err?.message ?? "";
+    const isConnectionDrop =
+      msg.includes("Connection terminated") ||
+      msg.includes("connection timeout") ||
+      msg.includes("ECONNRESET") ||
+      msg.includes("EPIPE");
+
+    if (isConnectionDrop) {
+      console.warn("[db] Connection dropped, retrying once…");
+      return await attempt();
+    }
+    throw err;
+  }
 }
 
+/** @deprecated Use `withDb` for fresh-connection safety. Direct pool access kept for compatibility. */
 export function createAdminClient() {
-    return getPool();
+  return pool;
 }
 
-export default getPool();
+export default pool;

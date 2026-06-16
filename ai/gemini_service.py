@@ -200,3 +200,45 @@ No markdown, no explanation outside the JSON.
         "answer": result.get("answer", ""),
         "workout_plan": result.get("workout_plan", []),
     }
+
+def analyze_food_image_gemini(image_bytes: bytes, mime_type: str = "image/jpeg") -> Dict[str, Any]:
+    """
+    Analyze food image using Gemini 2.5 Flash vision capability and return nutritional breakdown.
+    """
+    if not is_gemini_available():
+        raise RuntimeError("Gemini service is not configured (missing GEMINI_API_KEY).")
+
+    prompt = """
+    Analyze this food image. Identify the meal or food item(s) present, estimate the portion sizes, and calculate the total calories and macronutrients (protein, carbs, fat in grams).
+    
+    Respond ONLY with a valid JSON object matching this exact schema:
+    {
+      "food_name": "<name of the detected food/meal>",
+      "estimated_weight_g": <int_or_null>,
+      "total_calories": <int>,
+      "protein_g": <float>,
+      "carbs_g": <float>,
+      "fat_g": <float>,
+      "confidence": <float_from_0_to_1>
+    }
+    No markdown, no explanations outside of the JSON.
+    """
+    try:
+        response = gemini_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[
+                types.Part.from_bytes(
+                    data=image_bytes,
+                    mime_type=mime_type
+                ),
+                prompt
+            ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+            )
+        )
+        result = json.loads(response.text)
+        return result
+    except Exception as e:
+        logger.error(f"Gemini food image analysis error: {e}")
+        raise RuntimeError(f"Gemini vision analysis failed: {str(e)}")

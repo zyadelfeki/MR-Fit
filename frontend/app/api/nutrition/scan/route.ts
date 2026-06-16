@@ -1,33 +1,59 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const FOOD_TEMPLATES = [
-  { name: "Grilled Chicken Breast with Rice", calories: 480, protein: 42, carbs: 45, fat: 8 },
-  { name: "Avocado Toast with Poached Egg", calories: 380, protein: 14, carbs: 28, fat: 24 },
-  { name: "Double Scoop Whey Protein Shake", calories: 260, protein: 50, carbs: 6, fat: 3 },
-  { name: "Seared Salmon with Steamed Broccoli", calories: 410, protein: 38, carbs: 10, fat: 22 },
-  { name: "Sirloin Steak with Sweet Potato", calories: 620, protein: 46, carbs: 52, fat: 18 }
-];
+const AI_BACKEND_URL =
+  process.env.NEXT_PUBLIC_AI_COACH_API_URL || "http://localhost:8000";
 
 export async function POST(req: NextRequest) {
   try {
-    const { image } = await req.json();
+    const { image, mime_type } = await req.json();
     if (!image) {
-      return NextResponse.json({ error: "Image data is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Image data is required" },
+        { status: 400 }
+      );
     }
 
-    // Simulate edge model execution latency
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const backendRes = await fetch(`${AI_BACKEND_URL}/analyze-food-image`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        image_base64: image,
+        mime_type: mime_type ?? "image/jpeg",
+      }),
+    });
 
-    // Return a random food template
-    const randomIndex = Math.floor(Math.random() * FOOD_TEMPLATES.length);
-    const result = FOOD_TEMPLATES[randomIndex];
+    if (!backendRes.ok) {
+      const errText = await backendRes.text();
+      return NextResponse.json(
+        { error: `AI backend error: ${errText}` },
+        { status: backendRes.status }
+      );
+    }
+
+    const data = await backendRes.json();
+
+    // Map Python backend keys -> frontend FoodResult keys
+    const food = {
+      name: data.food_name ?? "Unknown Food",
+      calories: Math.round(data.total_calories ?? 0),
+      protein: Math.round((data.protein_g ?? 0) * 10) / 10,
+      carbs: Math.round((data.carbs_g ?? 0) * 10) / 10,
+      fat: Math.round((data.fat_g ?? 0) * 10) / 10,
+      servingSize: data.estimated_weight_g
+        ? `${data.estimated_weight_g}g`
+        : "1 serving",
+    };
 
     return NextResponse.json({
       success: true,
-      food: result,
-      message: "Detected food using local CNN model"
+      food,
+      confidence: data.confidence ?? null,
+      message: "Food analyzed using AI vision model",
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Failed to scan food" }, { status: 500 });
+    return NextResponse.json(
+      { error: err.message || "Failed to scan food" },
+      { status: 500 }
+    );
   }
 }

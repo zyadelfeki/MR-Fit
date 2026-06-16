@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   id                   uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id              uuid REFERENCES users(id) ON DELETE CASCADE NOT NULL UNIQUE,
   display_name         text,
+  avatar_url           text,
   date_of_birth        date,
   gender               text CHECK (gender IN ('male','female','other','prefer_not_to_say')),
   height_cm            numeric(5,2),

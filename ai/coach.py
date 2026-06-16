@@ -359,3 +359,82 @@ Relevant Exercises from database:
         raise HTTPException(status_code=502, detail=f"Ollama recommendation failed: {e}")
 
     return {"reply": reply_text, "exercises": matched_exercises}
+
+class FoodImageRequest(BaseModel):
+    image_base64: str  # Can be raw base64 or a data URI (data:image/jpeg;base64,...)
+    mime_type: Optional[str] = "image/jpeg"
+
+async def analyze_food_image_ollama_fallback(image_base64: str, mime_type: str = "image/jpeg") -> Dict[str, Any]:
+    """
+    Ollama-based vision fallback (e.g. using llava or bakllava).
+    """
+    # Ollama expects the raw base64 string without data URI prefixes
+    raw_base64 = image_base64
+    if "," in image_base64:
+        raw_base64 = image_base64.split(",")[1]
+
+    OLLAMA_VISION_MODEL = os.getenv("OLLAMA_VISION_MODEL", "llava")
+
+    prompt = """Analyze this food image. Identify the food item and estimate the total calorie count and macronutrients.
+    Return ONLY a valid JSON object with the following schema:
+    {
+      "food_name": "detected food name",
+      "estimated_weight_g": 300,
+      "total_calories": 450,
+      "protein_g": 20.0,
+      "carbs_g": 45.0,
+      "fat_g": 12.0,
+      "confidence": 0.8
+    }
+    No explanation, no markdown. Just the raw JSON.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            res = await client.post(
+                f"{OLLAMA_URL}/api/generate",
+                json={
+                    "model": OLLAMA_VISION_MODEL,
+                    "prompt": prompt,
+                    "images": [raw_base64],
+                    "stream": False,
+                    "format": "json"
+                }
+            )
+            res.raise_for_status()
+            data = res.json()
+            raw_text = data.get("response", "").strip()
+            result = json.loads(raw_text)
+            return result
+    except Exception as e:
+        logger.error(f"Ollama vision fallback failed: {e}")
+        raise RuntimeError(f"Ollama vision analysis failed: {e}")
+
+@app.post("/analyze-food-image")
+async def analyze_food_image(req: FoodImageRequest):
+    """
+    Analyze a food image to estimate calories and macros.
+    First tries Gemini 2.5 Flash (native vision), then falls back to local Ollama (Llava/Bakllava).
+    """
+    # 1. Try Gemini
+    if gemini_service.is_gemini_available():
+        try:
+            # Decode the base64 string to bytes
+            raw_base64 = req.image_base64
+            if "," in raw_base64:
+                raw_base64 = raw_base64.split(",")[1]
+            
+            import base64
+            image_bytes = base64.b64decode(raw_base64)
+            
+            result = gemini_service.analyze_food_image_gemini(image_bytes, req.mime_type)
+            return result
+        except Exception as e:
+            logger.error(f"Gemini vision analysis failed, trying Ollama: {e}")
+            
+    # 2. Try Ollama Fallback
+    try:
+        result = await analyze_food_image_ollama_fallback(req.image_base64, req.mime_type)
+        return result
+    except Exception as e:
+        logger.error(f"All vision engines failed: {e}")
+        raise HTTPException(status_code=502, detail=f"Failed to analyze image: {e}")

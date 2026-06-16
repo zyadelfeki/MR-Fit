@@ -16,8 +16,14 @@ const SMART_TRACKER_URL = process.env.SMART_TRACKER_URL ?? "http://localhost:800
 // Returns: { exercise: string, confidence: number, probabilities: Record<string, number> }
 
 export async function POST(req: NextRequest) {
+    let body: any = {};
     try {
-        const body = await req.json();
+        body = await req.json();
+    } catch {
+        // body remains empty object
+    }
+
+    try {
         const res = await fetch(`${SMART_TRACKER_URL}/predict`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -30,10 +36,9 @@ export async function POST(req: NextRequest) {
 
         const data = await res.json();
         return NextResponse.json(data);
-    } catch {
+    } catch (err) {
+        console.warn("FastAPI Smart-Tracker offline, using fallback simulator:", err);
         // Fallback to simulated response for absolute UX reliability when FastAPI is stopped
-        const reqClone = req.clone();
-        const body = await reqClone.json().catch(() => ({}));
         const exerciseLabel = body.label || "Squat";
         const exerciseSlug = exerciseLabel.toLowerCase().includes("bench") ? "bench" 
                            : exerciseLabel.toLowerCase().includes("dead") ? "dead"

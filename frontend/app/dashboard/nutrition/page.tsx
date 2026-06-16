@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { showToast } from "@/lib/toast";
 import Link from "next/link";
 import {
@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Plus,
   ChevronDown,
+  Upload,
 } from "lucide-react";
 
 type NutritionLog = {
@@ -75,10 +76,13 @@ export default function NutritionPage() {
   const [scanLoading, setScanLoading] = useState(false);
   const [scanResult, setScanResult] = useState<FoodResult | null>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null); // base64 data URL
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const startCamera = async () => {
     setScannerOpen(true);
     setScanResult(null);
+    setUploadedImage(null);
     setTimeout(async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -88,7 +92,7 @@ export default function NutritionPage() {
         const videoEl = document.getElementById("scanner-video") as HTMLVideoElement;
         if (videoEl) videoEl.srcObject = stream;
       } catch (e) {
-        console.warn("Webcam access not granted, using simulation.");
+        console.warn("Webcam access not granted.");
       }
     }, 100);
   };
@@ -98,22 +102,76 @@ export default function NutritionPage() {
       cameraStream.getTracks().forEach((track) => track.stop());
       setCameraStream(null);
     }
+    setUploadedImage(null);
+    setScanResult(null);
     setScannerOpen(false);
   };
 
+  /** Convert a File to a base64 data URL */
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Stop live webcam if active
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((t) => t.stop());
+      setCameraStream(null);
+    }
+    setScanResult(null);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setUploadedImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+    // Reset input so the same file can be re-selected
+    e.target.value = "";
+  };
+
+  /** Capture current video frame as base64 using an off-screen canvas */
+  const captureFrameBase64 = (): string | null => {
+    const video = document.getElementById("scanner-video") as HTMLVideoElement | null;
+    if (!video || video.readyState < 2) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.85);
+  };
+
   const handleScanImage = async () => {
+    let imageData: string | null = null;
+    let mimeType = "image/jpeg";
+
+    if (uploadedImage) {
+      imageData = uploadedImage;
+      // Detect mime from data URL header
+      const match = uploadedImage.match(/^data:(image\/[a-z]+);base64,/);
+      if (match) mimeType = match[1];
+    } else if (cameraStream) {
+      imageData = captureFrameBase64();
+    }
+
+    if (!imageData) {
+      showToast("No image source — upload an image or allow camera access.", "error");
+      return;
+    }
+
     setScanLoading(true);
     try {
       const res = await fetch("/api/nutrition/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: "mock_image_data" }),
+        body: JSON.stringify({ image: imageData, mime_type: mimeType }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Scan failed");
+      }
       const data = await res.json();
       setScanResult(data.food);
-    } catch {
-      showToast("Scanner failed", "error");
+    } catch (err: any) {
+      showToast(err.message || "Scanner failed", "error");
     } finally {
       setScanLoading(false);
     }
@@ -656,8 +714,25 @@ export default function NutritionPage() {
             </div>
 
             <div className="p-5 space-y-4">
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+
+              {/* Preview area */}
               <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-950 flex items-center justify-center">
-                {cameraStream ? (
+                {uploadedImage ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={uploadedImage}
+                    alt="Food to analyze"
+                    className="h-full w-full object-cover"
+                  />
+                ) : cameraStream ? (
                   <video
                     id="scanner-video"
                     autoPlay
@@ -668,52 +743,91 @@ export default function NutritionPage() {
                 ) : (
                   <div className="text-center p-6 space-y-3">
                     <Camera className="h-10 w-10 text-neutral-500 mx-auto" />
-                    <p className="text-xs text-neutral-450">Webcam stream un-initialized</p>
+                    <p className="text-xs text-neutral-400">No image selected</p>
                     <p className="text-[10px] text-neutral-500 font-semibold uppercase">
-                      Running Simulation Mode
+                      Use webcam or upload a photo
                     </p>
                   </div>
                 )}
 
-                {(scanLoading || (!cameraStream && !scanResult)) && (
+                {scanLoading && (
                   <div className="scanner-line" />
                 )}
               </div>
 
+              {/* Upload & webcam toggle row */}
+              {!scanResult && (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-neutral-700 bg-neutral-900 py-2 text-xs font-semibold text-neutral-300 hover:border-amber-500/50 hover:text-white transition-colors"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    {uploadedImage ? "Change Image" : "Upload Image"}
+                  </button>
+                  {!cameraStream && !uploadedImage && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScanResult(null);
+                        setUploadedImage(null);
+                        setTimeout(async () => {
+                          try {
+                            const stream = await navigator.mediaDevices.getUserMedia({
+                              video: { facingMode: "environment" },
+                            });
+                            setCameraStream(stream);
+                            const videoEl = document.getElementById("scanner-video") as HTMLVideoElement;
+                            if (videoEl) videoEl.srcObject = stream;
+                          } catch {
+                            showToast("Camera access denied", "error");
+                          }
+                        }, 50);
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-neutral-700 bg-neutral-900 py-2 text-xs font-semibold text-neutral-300 hover:border-amber-500/50 hover:text-white transition-colors"
+                    >
+                      <Camera className="h-3.5 w-3.5" /> Use Webcam
+                    </button>
+                  )}
+                </div>
+              )}
+
               {scanLoading && (
                 <p className="text-center text-xs text-[#FFB800] font-semibold animate-pulse">
-                  Analyzing frame with local model...
+                  Analyzing image with AI vision model...
                 </p>
               )}
 
               {scanResult ? (
-                <div className="rounded-2xl bg-neutral-900 border border-neutral-850 p-4 space-y-4">
+                <div className="rounded-2xl bg-neutral-900 border border-neutral-800 p-4 space-y-4">
                   <div>
                     <p className="text-[9px] font-bold uppercase tracking-widest text-[#FFB800]">
-                      Scanned Item
+                      Detected Food
                     </p>
                     <h4 className="text-base font-bold text-white mt-0.5">{scanResult.name}</h4>
+                    <p className="text-[10px] text-neutral-500 mt-0.5">{scanResult.servingSize}</p>
                   </div>
                   <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                    <div className="p-2 rounded-xl bg-neutral-950 border border-neutral-850">
+                    <div className="p-2 rounded-xl bg-neutral-950 border border-neutral-800">
                       <span className="block font-extrabold text-white">
                         {scanResult.calories}
                       </span>
                       <span className="text-[9px] text-neutral-500 font-bold uppercase">kcal</span>
                     </div>
-                    <div className="p-2 rounded-xl bg-neutral-950 border border-neutral-850">
+                    <div className="p-2 rounded-xl bg-neutral-950 border border-neutral-800">
                       <span className="block font-extrabold text-emerald-400">
                         {scanResult.protein}g
                       </span>
                       <span className="text-[9px] text-neutral-500 font-bold uppercase">Prot</span>
                     </div>
-                    <div className="p-2 rounded-xl bg-neutral-950 border border-neutral-850">
+                    <div className="p-2 rounded-xl bg-neutral-950 border border-neutral-800">
                       <span className="block font-extrabold text-amber-400">
                         {scanResult.carbs}g
                       </span>
                       <span className="text-[9px] text-neutral-500 font-bold uppercase">Carb</span>
                     </div>
-                    <div className="p-2 rounded-xl bg-neutral-950 border border-neutral-850">
+                    <div className="p-2 rounded-xl bg-neutral-950 border border-neutral-800">
                       <span className="block font-extrabold text-rose-400">
                         {scanResult.fat}g
                       </span>
@@ -723,7 +837,7 @@ export default function NutritionPage() {
 
                   <div className="flex gap-2 pt-1">
                     <button
-                      onClick={handleScanImage}
+                      onClick={() => { setScanResult(null); }}
                       className="btn-secondary flex-1 text-xs py-2 bg-neutral-800 border border-neutral-700 flex items-center justify-center gap-1"
                     >
                       <RefreshCw className="h-3 w-3" /> Rescan
@@ -738,20 +852,18 @@ export default function NutritionPage() {
                 </div>
               ) : (
                 <button
-                  onClick={handleScanImage}
-                  disabled={scanLoading}
-                  className="btn-primary w-full py-2.5 text-black bg-[#FFB800] flex items-center justify-center gap-1.5"
+                  onClick={() => void handleScanImage()}
+                  disabled={scanLoading || (!uploadedImage && !cameraStream)}
+                  className="btn-primary w-full py-2.5 text-black bg-[#FFB800] flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {scanLoading ? (
-                    "Analyzing..."
+                    <><RefreshCw className="h-4 w-4 animate-spin" /> Analyzing...</>
+                  ) : uploadedImage ? (
+                    <><Upload className="h-4 w-4" /> Analyze Uploaded Image</>
                   ) : cameraStream ? (
-                    <>
-                      <Camera className="h-4 w-4" /> Capture & Analyze
-                    </>
+                    <><Camera className="h-4 w-4" /> Capture &amp; Analyze</>
                   ) : (
-                    <>
-                      <RefreshCw className="h-4 w-4 animate-spin" /> Run Simulated Scan
-                    </>
+                    "Select an image above to analyze"
                   )}
                 </button>
               )}
