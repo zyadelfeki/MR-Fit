@@ -25,7 +25,7 @@ if %errorlevel% equ 0 (
     wsl -d Ubuntu -u root service postgresql start
 
     rem --- Start PostgreSQL relay (bridges WSL2 PostgreSQL to Windows localhost:5432) ---
-    echo [1/4] Starting PostgreSQL relay (WSL2 bridge)...
+    echo [1/4] Starting PostgreSQL relay WSL2 bridge...
     start "MR-Fit PG Relay" powershell -NoExit -Command "cd '%ROOT%'; Write-Host '=== MR-Fit PG Relay ===' -ForegroundColor Yellow; node pg-proxy.js"
 
     rem --- Wait 3 seconds for relay to bind ---
