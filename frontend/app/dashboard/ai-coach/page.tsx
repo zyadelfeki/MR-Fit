@@ -261,10 +261,9 @@ export default function AICoachPage() {
       try {
         const res = await fetch("/api/chat-history");
         if (!res.ok) throw new Error();
-        const data = await res.json();
-        const rows = data.history as ChatHistoryRow[];
+        const rows = await res.json() as ChatHistoryRow[];
 
-        if (rows.length > 0) {
+        if (Array.isArray(rows) && rows.length > 0) {
           const loaded = rows.map((r) => {
             const parsed = parseMessageSuggestions(r.content);
             return {
