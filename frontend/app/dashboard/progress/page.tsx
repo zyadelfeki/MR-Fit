@@ -1,8 +1,9 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import pool from "@/lib/db";
+import { withDb } from "@/lib/db";
 import LogWeightForm from "@/components/LogWeightForm";
-import { Award, TrendingUp, Calendar, AlertCircle } from "lucide-react";
+import ProgressStatsTabs from "@/components/ProgressStatsTabs";
+import { Award, TrendingUp, Calendar, AlertCircle, Trophy, Flame, Medal } from "lucide-react";
 import RevealOnScroll from "@/components/RevealOnScroll";
 
 export const metadata = {
@@ -94,12 +95,33 @@ export default async function ProgressPage() {
 
     const userId = session.user.id;
 
-    let weightRows: WeightLog[] = [];
-    let heatmapRows: WorkoutHeatmapRow[] = [];
-    let prRows: PersonalRecord[] = [];
+    const {
+        profile,
+        weightRows,
+        heatmapRows,
+        prRows,
+        weeklyStats,
+        monthlyStats,
+        yearlyStats,
+        leaderboard,
+    } = await withDb(async (client) => {
+        // 1. Get profile goals
+        const profileRes = await client.query(
+            `SELECT calorie_goal, protein_goal, carb_goal, fat_goal, fitness_goal, weight_kg
+             FROM profiles WHERE user_id = $1`,
+            [userId]
+        );
+        const _profile = profileRes.rows[0] ?? {
+            calorie_goal: 2000,
+            protein_goal: 150,
+            carb_goal: 250,
+            fat_goal: 65,
+            fitness_goal: 'maintain',
+            weight_kg: 70
+        };
 
-    try {
-        const r = await pool.query(
+        // 2. Get 30-day weight logs
+        const weightRes = await client.query(
             `SELECT recorded_at AS logged_at, value AS weight_kg
              FROM wearable_data
              WHERE user_id = $1
@@ -108,22 +130,18 @@ export default async function ProgressPage() {
              ORDER BY recorded_at ASC`,
             [userId]
         );
-        weightRows = r.rows as WeightLog[];
-    } catch { weightRows = []; }
 
-    try {
-        const r = await pool.query(
+        // 3. Get 84-day heatmap rows
+        const heatmapRes = await client.query(
             `SELECT DATE(logged_at AT TIME ZONE 'UTC') AS day, COUNT(*)::int AS count
              FROM workout_logs WHERE user_id = $1
                AND logged_at >= (CURRENT_DATE - INTERVAL '84 days')
              GROUP BY DATE(logged_at AT TIME ZONE 'UTC')`,
             [userId]
         );
-        heatmapRows = r.rows as WorkoutHeatmapRow[];
-    } catch { heatmapRows = []; }
 
-    try {
-        const r = await pool.query(
+        // 4. Get PR rows
+        const prRes = await client.query(
             `SELECT e.name AS exercise_name,
                     MAX(wl.weight_kg) AS max_weight,
                     MAX(wl.reps_completed) AS max_reps,
@@ -134,8 +152,166 @@ export default async function ProgressPage() {
              GROUP BY e.name ORDER BY achieved_at DESC LIMIT 10`,
             [userId]
         );
-        prRows = r.rows as PersonalRecord[];
-    } catch { prRows = []; }
+
+        // Helper for intervals
+        const getIntervalStats = async (intervalStr: string) => {
+             // Workouts
+             const workoutsRes = await client.query(
+               `SELECT
+                  COUNT(DISTINCT COALESCE(workout_id::text, DATE(logged_at)::text))::int AS count,
+                  COALESCE(SUM(sets_completed), 0)::int AS total_sets,
+                  COALESCE(SUM(reps_completed), 0)::int AS total_reps
+                FROM workout_logs
+                WHERE user_id = $1 AND logged_at >= NOW() - CAST($2 AS interval)`,
+               [userId, intervalStr]
+             );
+
+             // Nutrition
+             const nutritionRes = await client.query(
+               `SELECT
+                  COALESCE(AVG(daily_calories), 0)::numeric(6,1) AS avg_calories,
+                  COALESCE(AVG(daily_protein), 0)::numeric(6,1) AS avg_protein,
+                  COALESCE(AVG(daily_carbs), 0)::numeric(6,1) AS avg_carbs,
+                  COALESCE(AVG(daily_fat), 0)::numeric(6,1) AS avg_fat
+                FROM (
+                  SELECT
+                    SUM(calories) AS daily_calories,
+                    SUM(protein_g) AS daily_protein,
+                    SUM(carbs_g) AS daily_carbs,
+                    SUM(fat_g) AS daily_fat
+                  FROM nutrition_logs
+                  WHERE user_id = $1 AND logged_at >= NOW() - CAST($2 AS interval)
+                  GROUP BY DATE(logged_at AT TIME ZONE 'UTC')
+                ) as daily_sums`,
+               [userId, intervalStr]
+             );
+
+             // Weight change
+             const weightChangeRes = await client.query(
+               `WITH interval_weights AS (
+                  SELECT value AS weight, recorded_at
+                  FROM wearable_data
+                  WHERE user_id = $1 AND metric = 'weight_kg' AND recorded_at >= NOW() - CAST($2 AS interval)
+                  ORDER BY recorded_at ASC
+                )
+                SELECT
+                  (SELECT weight FROM interval_weights ORDER BY recorded_at DESC LIMIT 1)::numeric AS current_weight,
+                  (SELECT weight FROM interval_weights ORDER BY recorded_at ASC LIMIT 1)::numeric AS start_weight`,
+               [userId, intervalStr]
+             );
+
+             // Active days
+             const activeDaysRes = await client.query(
+               `SELECT COUNT(DISTINCT DATE(logged_at AT TIME ZONE 'UTC'))::int AS active_days
+                FROM (
+                  SELECT logged_at FROM workout_logs WHERE user_id = $1 AND logged_at >= NOW() - CAST($2 AS interval)
+                  UNION ALL
+                  SELECT logged_at FROM nutrition_logs WHERE user_id = $1 AND logged_at >= NOW() - CAST($2 AS interval)
+                ) as combined_logs`,
+               [userId, intervalStr]
+             );
+
+             const w = workoutsRes.rows[0];
+             const n = nutritionRes.rows[0];
+             const wc = weightChangeRes.rows[0];
+             const ad = activeDaysRes.rows[0]?.active_days || 0;
+
+             const startW = Number(wc?.start_weight) || 0;
+             const currentW = Number(wc?.current_weight) || 0;
+             const deltaW = currentW - startW;
+
+             return {
+               workouts: {
+                 count: Number(w?.count) || 0,
+                 total_sets: Number(w?.total_sets) || 0,
+                 total_reps: Number(w?.total_reps) || 0,
+               },
+               nutrition: {
+                 avg_calories: Number(n?.avg_calories) || 0,
+                 avg_protein: Number(n?.avg_protein) || 0,
+                 avg_carbs: Number(n?.avg_carbs) || 0,
+                 avg_fat: Number(n?.avg_fat) || 0,
+               },
+               weight: {
+                 start_weight: startW,
+                 current_weight: currentW,
+                 delta: deltaW,
+               },
+               active_days: ad,
+             };
+        };
+
+        const [weekly, monthly, yearly] = await Promise.all([
+             getIntervalStats('7 days'),
+             getIntervalStats('30 days'),
+             getIntervalStats('365 days')
+        ]);
+
+        // 5. Get leaderboard top 10 users
+        const leaderboardRes = await client.query(
+          `WITH user_activity_days AS (
+             SELECT DISTINCT user_id, DATE(logged_at AT TIME ZONE 'UTC') AS activity_date
+             FROM workout_logs
+           ),
+           user_streaks AS (
+             SELECT
+               user_id,
+               activity_date,
+               activity_date - CAST(row_number() OVER (PARTITION BY user_id ORDER BY activity_date) AS INT) AS grp
+             FROM user_activity_days
+           ),
+           streak_lengths AS (
+             SELECT
+               user_id,
+               COUNT(*) AS streak_len,
+               MIN(activity_date) AS start_date,
+               MAX(activity_date) AS end_date
+             FROM user_streaks
+             GROUP BY user_id, grp
+           ),
+           active_streaks AS (
+             SELECT
+               user_id,
+               COALESCE(MAX(streak_len), 0) AS active_streak
+             FROM streak_lengths
+             WHERE end_date >= CURRENT_DATE - 1
+             GROUP BY user_id
+           )
+           SELECT
+             p.user_id,
+             COALESCE(p.display_name, SPLIT_PART(u.email, '@', 1)) AS name,
+             p.avatar_url,
+             COALESCE(w.workout_count, 0)::int as workouts_count,
+             COALESCE(w.total_reps, 0)::int as total_reps,
+             COALESCE(w.total_sets, 0)::int as total_sets,
+             COALESCE(s.active_streak, 0)::int as streak
+           FROM users u
+           JOIN profiles p ON u.id = p.user_id
+           LEFT JOIN (
+             SELECT
+               user_id,
+               COUNT(DISTINCT COALESCE(workout_id::text, DATE(logged_at)::text)) AS workout_count,
+               SUM(reps_completed) AS total_reps,
+               SUM(sets_completed) AS total_sets
+             FROM workout_logs
+             GROUP BY user_id
+           ) w ON u.id = w.user_id
+           LEFT JOIN active_streaks s ON u.id = s.user_id
+           ORDER BY workouts_count DESC, total_reps DESC
+           LIMIT 10`
+        );
+
+        return {
+            profile: _profile,
+            weightRows: weightRes.rows as WeightLog[],
+            heatmapRows: heatmapRes.rows as WorkoutHeatmapRow[],
+            prRows: prRes.rows as PersonalRecord[],
+            weeklyStats: weekly,
+            monthlyStats: monthly,
+            yearlyStats: yearly,
+            leaderboard: leaderboardRes.rows,
+        };
+    });
 
     const weightSeries = weightRows.map((row) => ({
         date: toIsoDate(new Date(row.logged_at)),
@@ -172,6 +348,20 @@ export default async function ProgressPage() {
                     <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Your weight trend, workout frequency, and personal records</p>
                 </div>
             </div>
+
+            {/* Tabbed Progress Comparison stats */}
+            <RevealOnScroll className="space-y-4">
+                <div className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-[#FFB800]" />
+                    <h2 className="text-lg font-semibold text-white">Progress Comparison Reports</h2>
+                </div>
+                <ProgressStatsTabs
+                    weekly={weeklyStats}
+                    monthly={monthlyStats}
+                    yearly={yearlyStats}
+                    goals={profile}
+                />
+            </RevealOnScroll>
 
             {/* Weight Trend */}
             <RevealOnScroll className="space-y-4">
@@ -342,6 +532,89 @@ export default async function ProgressPage() {
                         </table>
                     </div>
                 )}
+            </RevealOnScroll>
+
+            {/* Community Leaderboard */}
+            <RevealOnScroll className="rounded-xl border border-neutral-850 bg-[#161616] p-6 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
+                    <Trophy className="h-40 w-40 text-[#FFB800]" />
+                </div>
+                <div className="flex items-center justify-between border-b border-neutral-850 pb-4 mb-5">
+                    <div className="flex items-center gap-2">
+                        <Trophy className="h-5 w-5 text-[#FFB800]" />
+                        <h2 className="text-lg font-semibold text-white">Community Leaderboard</h2>
+                    </div>
+                    <span className="text-xs font-bold text-[#FFB800] uppercase tracking-widest bg-[#FFB800]/10 px-2.5 py-1 rounded-full border border-[#FFB800]/20">
+                        Top Members
+                    </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-neutral-800">
+                        <thead>
+                            <tr>
+                                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-neutral-450">Rank</th>
+                                <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-neutral-450">Member</th>
+                                <th className="px-4 py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-neutral-450">Workouts</th>
+                                <th className="px-4 py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-neutral-450">Total Reps</th>
+                                <th className="px-4 py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-neutral-450">Streak</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-neutral-850 text-neutral-300">
+                            {leaderboard.map((member: any, idx: number) => {
+                                const isCurrentUser = member.user_id === userId;
+                                const isTop3 = idx < 3;
+                                const medals = [
+                                    <Medal key="gold" className="h-4 w-4 text-[#FFD700]" />,
+                                    <Medal key="silver" className="h-4 w-4 text-[#C0C0C0]" />,
+                                    <Medal key="bronze" className="h-4 w-4 text-[#CD7F32]" />
+                                ];
+
+                                return (
+                                    <tr key={member.user_id} className={`transition-all ${
+                                        isCurrentUser ? "bg-[#FFB800]/5 border-l-2 border-l-[#FFB800]" : "hover:bg-neutral-900/40"
+                                    }`}>
+                                        <td className="px-4 py-3.5 text-sm font-medium">
+                                            <div className="flex items-center gap-1.5 font-bold">
+                                                {isTop3 ? (
+                                                    medals[idx]
+                                                ) : (
+                                                    <span className="text-neutral-500 pl-1">#{idx + 1}</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3.5 text-sm font-semibold text-white">
+                                            <div className="flex items-center gap-2">
+                                                <span>{member.name}</span>
+                                                {isCurrentUser && (
+                                                    <span className="text-[9px] uppercase tracking-wider font-extrabold text-[#FFB800] bg-[#FFB800]/10 border border-[#FFB800]/25 px-1.5 py-0.5 rounded">
+                                                        You
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3.5 text-sm text-center font-bold text-neutral-200">
+                                            {member.workouts_count}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-sm text-center text-neutral-400 font-medium">
+                                            {member.total_reps.toLocaleString()}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-sm text-center">
+                                            {member.streak > 0 ? (
+                                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-500 text-xs font-bold">
+                                                    <Flame className="h-3 w-3 fill-amber-500" />
+                                                    <span>{member.streak} d</span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-neutral-500">—</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             </RevealOnScroll>
         </div>
     );

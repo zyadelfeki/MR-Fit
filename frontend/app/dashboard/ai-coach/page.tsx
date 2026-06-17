@@ -12,7 +12,11 @@ import {
   Send,
   Sparkles,
   Zap,
+  Check,
+  X as CloseIcon,
+  Plus
 } from "lucide-react";
+import { showToast } from "@/lib/toast";
 
 type Exercise = {
   id?: string;
@@ -27,6 +31,7 @@ type Message = {
   role: "user" | "ai";
   text: string;
   exercises?: Exercise[];
+  suggestions?: any[];
 };
 
 type ChatHistoryRow = {
@@ -36,13 +41,36 @@ type ChatHistoryRow = {
   created_at: string;
 };
 
+// Parse structured JSON suggestions out of assistant responses
+function parseMessageSuggestions(text: string): { cleanText: string; suggestions: any[] } {
+  const marker = "```suggestion-json";
+  const startIdx = text.indexOf(marker);
+  if (startIdx === -1) return { cleanText: text, suggestions: [] };
+
+  const endMarker = "```";
+  const contentStart = startIdx + marker.length;
+  const endIdx = text.indexOf(endMarker, contentStart);
+  if (endIdx === -1) return { cleanText: text, suggestions: [] };
+
+  const jsonStr = text.substring(contentStart, endIdx).trim();
+  const cleanText = (text.substring(0, startIdx).trim() + "\n" + text.substring(endIdx + endMarker.length).trim()).trim();
+
+  try {
+    const suggestions = JSON.parse(jsonStr);
+    return { cleanText, suggestions: Array.isArray(suggestions) ? suggestions : [suggestions] };
+  } catch (e) {
+    console.error("Failed to parse suggestion JSON:", e);
+    return { cleanText: text, suggestions: [] };
+  }
+}
+
 // Simulated Local AI responses to guarantee functionality when Ollama is offline
 function getSimulatedResponse(text: string): { reply: string; exercises?: Exercise[] } {
   const query = text.toLowerCase();
 
   if (query.includes("workout") || query.includes("suggest") || query.includes("train") || query.includes("routine") || query.includes("split")) {
     return {
-      reply: `Here is a custom **Adaptive Workout Routine** designed for your strength development:\n\n### Adaptive Push/Pull/Legs Split\n\n1. **Push Day (Chest/Shoulders/Triceps)**\n   - **Bench Press**: 4 sets x 6-8 reps (Focus on tempo control)\n   - **Overhead Press**: 3 sets x 8 reps\n   - **Dips**: 3 sets x 10 reps\n\n2. **Pull Day (Back/Biceps)**\n   - **Barbell Row**: 4 sets x 8 reps (Squeeze at peak contraction)\n   - **Pull-ups**: 3 sets x max reps\n   - **Bicep Curls**: 3 sets x 12 reps\n\n3. **Legs Day (Quads/Hamstrings)**\n   - **Back Squat**: 4 sets x 6 reps (Full depth)\n   - **Deadlift**: 3 sets x 5 reps (Maintain flat back)\n\n*Maintain progressive overload by adding 2.5kg once target reps are achieved.*`,
+      reply: `Here is a custom **Adaptive Workout Routine** designed for your strength development:\n\n### Adaptive Push/Pull/Legs Split\n\n1. **Push Day (Chest/Shoulders/Triceps)**\n   - **Bench Press**: 4 sets x 6-8 reps (Focus on tempo control)\n   - **Overhead Press**: 3 sets x 8 reps\n   - **Dips**: 3 sets x 10 reps\n\n2. **Pull Day (Back/Biceps)**\n   - **Barbell Row**: 4 sets x 8 reps (Squeeze at peak contraction)\n   - **Pull-ups**: 3 sets x max reps\n   - **Bicep Curls**: 3 sets x 12 reps\n\n3. **Legs Day (Quads/Hamstrings)**\n   - **Back Squat**: 4 sets x 6 reps (Full depth)\n   - **Deadlift**: 3 sets x 5 reps (Maintain flat back)\n\n*Maintain progressive overload by adding 2.5kg once target reps are achieved.*\n\n\`\`\`suggestion-json\n[\n  {\n    \"type\": \"workout_edit\",\n    \"exercise_name\": \"Bench Press\",\n    \"sets\": 4,\n    \"reps\": 8,\n    \"weight_kg\": 80\n  },\n  {\n    \"type\": \"workout_edit\",\n    \"exercise_name\": \"Overhead Press\",\n    \"sets\": 3,\n    \"reps\": 8,\n    \"weight_kg\": 50\n  }\n]\n\`\`\``,
       exercises: [
         { name: "Bench Press", muscle_group: "Chest", difficulty: "Intermediate" },
         { name: "Overhead Press", muscle_group: "Shoulders", difficulty: "Intermediate" },
@@ -54,7 +82,7 @@ function getSimulatedResponse(text: string): { reply: string; exercises?: Exerci
 
   if (query.includes("nutrition") || query.includes("diet") || query.includes("eat") || query.includes("calorie") || query.includes("food") || query.includes("macro")) {
     return {
-      reply: `Based on your profile, here is a macro breakdown optimized for muscle hypertrophy and recovery:\n\n- **Daily Calorie Target**: 2,500 kcal (surplus for growth)\n- **Protein Target**: 160g (muscle protein synthesis support)\n- **Carbs Target**: 280g (glycogen replenishment)\n- **Fat Target**: 75g (hormonal optimization)\n\n### Recommended Daily Meals:\n1. **Breakfast**: 4 Scrambled Eggs, 2 slices of whole wheat toast, and an avocado.\n2. **Lunch**: 200g Grilled Chicken Breast, 1 cup of Jasmine rice, and steamed broccoli.\n3. **Snack**: Whey protein shake (1 scoop) with a banana and 30g almonds.\n4. **Dinner**: 200g Salmon fillet, sweet potato mash, and asparagus.`,
+      reply: `Based on your profile, here is a macro breakdown optimized for muscle hypertrophy and recovery:\n\n- **Daily Calorie Target**: 2,500 kcal (surplus for growth)\n- **Protein Target**: 160g (muscle protein synthesis support)\n- **Carbs Target**: 280g (glycogen replenishment)\n- **Fat Target**: 75g (hormonal optimization)\n\n### Recommended Daily Meals:\n1. **Breakfast**: 4 Scrambled Eggs, 2 slices of whole wheat toast, and an avocado.\n2. **Lunch**: 200g Grilled Chicken Breast, 1 cup of Jasmine rice, and steamed broccoli.\n\n\`\`\`suggestion-json\n[\n  {\n    \"type\": \"nutrition_edit\",\n    \"food_name\": \"Grilled Chicken Breast (200g)\",\n    \"calories\": 330,\n    \"protein_g\": 62.0,\n    \"carbs_g\": 0.0,\n    \"fat_g\": 7.0\n  }\n]\n\`\`\``,
     };
   }
 
@@ -86,6 +114,11 @@ export default function AICoachPage() {
   const [isFlushingQueue, setIsFlushingQueue] = useState(false);
   const [animatedText, setAnimatedText] = useState<Record<string, string>>({});
   const [typingTargetId, setTypingTargetId] = useState<string | null>(null);
+
+  // Suggestion action tracking state
+  const [suggestionStates, setSuggestionStates] = useState<Record<string, "pending" | "accepted" | "denied">>({});
+  const [workouts, setWorkouts] = useState<any[]>([]);
+  const [selectedWorkoutForSuggestion, setSelectedWorkoutForSuggestion] = useState<Record<string, string>>({});
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -164,7 +197,7 @@ export default function AICoachPage() {
     setAnimatedText((prev) => ({ ...prev, [typingTargetId]: "" }));
 
     typingIntervalRef.current = setInterval(() => {
-      index += 1;
+      index += 3; // Type 3 characters at a time for snappier UI transitions
 
       setAnimatedText((prev) => ({
         ...prev,
@@ -178,6 +211,7 @@ export default function AICoachPage() {
         }
         setTypingTargetId(null);
       }
+
     }, 10);
 
     return () => {
@@ -217,17 +251,29 @@ export default function AICoachPage() {
       }
 
       try {
+        const res = await fetch("/api/workouts");
+        if (res.ok) {
+          const data = await res.json();
+          setWorkouts(data.workouts || []);
+        }
+      } catch {}
+
+      try {
         const res = await fetch("/api/chat-history");
         if (!res.ok) throw new Error();
         const data = await res.json();
         const rows = data.history as ChatHistoryRow[];
 
         if (rows.length > 0) {
-          const loaded = rows.map((r) => ({
-            id: r.id,
-            role: r.role === "assistant" ? "ai" as const : "user" as const,
-            text: r.content,
-          }));
+          const loaded = rows.map((r) => {
+            const parsed = parseMessageSuggestions(r.content);
+            return {
+              id: r.id,
+              role: r.role === "assistant" ? "ai" as const : "user" as const,
+              text: parsed.cleanText,
+              suggestions: parsed.suggestions
+            };
+          });
           setMessages(loaded);
         } else {
           setMessages([getWelcomeMessage(resolvedName)]);
@@ -241,6 +287,125 @@ export default function AICoachPage() {
 
     void initChat();
   }, []);
+
+  const handleAcceptSuggestion = async (msgId: string, sugIdx: number, sug: any) => {
+    const key = `${msgId}-${sugIdx}`;
+    
+    if (sug.type === "workout_edit") {
+      let workoutId = selectedWorkoutForSuggestion[key];
+      
+      // If user hasn't selected a workout, try to pick the first active one, or auto-create one
+      if (!workoutId) {
+        if (workouts.length > 0) {
+          workoutId = workouts[0].id;
+        } else {
+          // Auto create a new session
+          try {
+            const resNew = await fetch("/api/workouts", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ title: "AI Coach Session", source: "ai" })
+            });
+            if (resNew.ok) {
+              const dataNew = await resNew.json();
+              workoutId = dataNew.id;
+              // Refresh workout list
+              const resW = await fetch("/api/workouts");
+              if (resW.ok) {
+                const dataW = await resW.json();
+                setWorkouts(dataW.workouts || []);
+              }
+              showToast("Created a new workout session 'AI Coach Session'", "success");
+            } else {
+              showToast("Please create a workout session first", "error");
+              return;
+            }
+          } catch {
+            showToast("Failed to create default workout", "error");
+            return;
+          }
+        }
+      }
+      
+      try {
+        const res = await fetch(`/api/workouts/${workoutId}/exercises`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            exercise_name: sug.exercise_name,
+            sets: Number(sug.sets || 3),
+            reps: Number(sug.reps || 10),
+            weight_kg: sug.weight_kg ? Number(sug.weight_kg) : null
+          })
+        });
+        if (res.ok) {
+          showToast(`Added ${sug.exercise_name} to workout!`, "success");
+          setSuggestionStates(prev => ({ ...prev, [key]: "accepted" }));
+        } else {
+          const err = await res.json();
+          showToast(err.error || "Failed to add exercise", "error");
+        }
+      } catch (err) {
+        showToast("Failed to add exercise to workout", "error");
+      }
+    } else if (sug.type === "nutrition_edit") {
+      try {
+        const res = await fetch("/api/nutrition", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            food_name: sug.food_name,
+            calories: Number(sug.calories || 0),
+            protein_g: sug.protein_g ? Number(sug.protein_g) : null,
+            carbs_g: sug.carbs_g ? Number(sug.carbs_g) : null,
+            fat_g: sug.fat_g ? Number(sug.fat_g) : null
+          })
+        });
+        if (res.ok) {
+          showToast(`Logged ${sug.food_name} to nutrition log!`, "success");
+          setSuggestionStates(prev => ({ ...prev, [key]: "accepted" }));
+        } else {
+          const err = await res.json();
+          showToast(err.error || "Failed to log nutrition", "error");
+        }
+      } catch (err) {
+        showToast("Failed to log nutrition", "error");
+      }
+    }
+  };
+
+  const handleDenySuggestion = (msgId: string, sugIdx: number) => {
+    const key = `${msgId}-${sugIdx}`;
+    setSuggestionStates(prev => ({ ...prev, [key]: "denied" }));
+    showToast("Suggestion declined", "info");
+  };
+
+  const handleCreateDefaultWorkout = async (key: string) => {
+    try {
+      const res = await fetch("/api/workouts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "AI Coach Session",
+          source: "ai"
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Refresh workouts list
+        const resW = await fetch("/api/workouts");
+        if (resW.ok) {
+          const dataW = await resW.json();
+          setWorkouts(dataW.workouts || []);
+        }
+        // Select the newly created workout
+        setSelectedWorkoutForSuggestion(prev => ({ ...prev, [key]: data.id }));
+        showToast("Created new workout session 'AI Coach Session'", "success");
+      }
+    } catch {
+      showToast("Failed to create workout", "error");
+    }
+  };
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || sending) return;
@@ -273,13 +438,15 @@ export default function AICoachPage() {
       const data = await response.json();
       const replyText = data.reply || "";
       const exercises = data.exercises || [];
+      const parsed = parseMessageSuggestions(replyText);
 
       const aiMsgId = "ai-" + Date.now();
       const aiMsgPlaceholder: Message = {
         id: aiMsgId,
         role: "ai",
-        text: replyText,
+        text: parsed.cleanText,
         exercises: exercises,
+        suggestions: parsed.suggestions
       };
       setMessages((prev) => [...prev, aiMsgPlaceholder]);
       setTypingTargetId(aiMsgId);
@@ -288,12 +455,14 @@ export default function AICoachPage() {
     } catch {
       // Offline fallback
       const simulated = getSimulatedResponse(text);
+      const parsed = parseMessageSuggestions(simulated.reply);
       const aiMsgId = "ai-sim-" + Date.now();
       const aiMsg: Message = {
         id: aiMsgId,
         role: "ai",
-        text: simulated.reply,
+        text: parsed.cleanText,
         exercises: simulated.exercises,
+        suggestions: parsed.suggestions
       };
       setMessages((prev) => [...prev, aiMsg]);
       setTypingTargetId(aiMsgId);
@@ -422,6 +591,110 @@ export default function AICoachPage() {
                             </span>
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* INTERACTIVE COACH SUGGESTIONS CARDS */}
+                  {msg.suggestions && msg.suggestions.length > 0 && (
+                    <div className="mt-4 flex flex-col gap-3 border-t border-neutral-850 pt-3.5">
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#FFB800] font-heading">
+                        Interactive Action Requests
+                      </p>
+                      <div className="space-y-2.5">
+                        {msg.suggestions.map((sug, i) => {
+                          const key = `${msg.id}-${i}`;
+                          const state = suggestionStates[key] || "pending";
+
+                          if (sug.type === "workout_edit") {
+                            const selectedW = selectedWorkoutForSuggestion[key] || (workouts[0]?.id ?? "");
+                            return (
+                              <div key={i} className="rounded-xl border border-neutral-800 bg-neutral-950 p-3 flex flex-col gap-2 text-xs">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <span className="font-bold text-white block">💪 Add {sug.exercise_name}</span>
+                                    <span className="text-neutral-450 text-[10px]">{sug.sets}x{sug.reps} @ {sug.weight_kg ? `${sug.weight_kg}kg` : "bodyweight"}</span>
+                                  </div>
+                                  {state === "accepted" && <span className="rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 text-[9px] font-bold">Accepted</span>}
+                                  {state === "denied" && <span className="rounded-full bg-neutral-800 text-neutral-400 border border-neutral-700 px-2 py-0.5 text-[9px] font-bold">Declined</span>}
+                                </div>
+
+                                {state === "pending" && (
+                                  <div className="space-y-2 pt-1 border-t border-neutral-900">
+                                    <div className="flex gap-1.5 items-center">
+                                      <select
+                                        value={selectedW}
+                                        onChange={(e) => setSelectedWorkoutForSuggestion(prev => ({ ...prev, [key]: e.target.value }))}
+                                        className="flex-1 rounded-lg border border-neutral-800 bg-neutral-900 p-1 text-[10px] text-white"
+                                      >
+                                        {workouts.length === 0 ? (
+                                          <option value="">No active workouts</option>
+                                        ) : (
+                                          workouts.map((w) => (
+                                            <option key={w.id} value={w.id}>{w.title}</option>
+                                          ))
+                                        )}
+                                      </select>
+                                      {workouts.length === 0 && (
+                                        <button
+                                          onClick={() => void handleCreateDefaultWorkout(key)}
+                                          className="rounded-lg bg-neutral-900 border border-neutral-850 px-2 py-1 text-[9px] text-amber-500 hover:text-white"
+                                        >
+                                          + Create
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="flex justify-end gap-1.5 pt-0.5">
+                                      <button
+                                        onClick={() => handleDenySuggestion(msg.id, i)}
+                                        className="rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-[10px] font-bold text-neutral-450 hover:text-white"
+                                      >
+                                        Decline
+                                      </button>
+                                      <button
+                                        onClick={() => void handleAcceptSuggestion(msg.id, i, sug)}
+                                        className="rounded-lg bg-[#FFB800] text-black px-2.5 py-1 text-[10px] font-bold"
+                                      >
+                                        Accept
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          } else if (sug.type === "nutrition_edit") {
+                            return (
+                              <div key={i} className="rounded-xl border border-neutral-800 bg-neutral-950 p-3 flex flex-col gap-2 text-xs">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <span className="font-bold text-white block">🥗 Log {sug.food_name}</span>
+                                    <span className="text-neutral-450 text-[10px]">{sug.calories} kcal • P: {sug.protein_g}g C: {sug.carbs_g}g F: {sug.fat_g}g</span>
+                                  </div>
+                                  {state === "accepted" && <span className="rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 text-[9px] font-bold">Accepted</span>}
+                                  {state === "denied" && <span className="rounded-full bg-neutral-800 text-neutral-400 border border-neutral-700 px-2 py-0.5 text-[9px] font-bold">Declined</span>}
+                                </div>
+
+                                {state === "pending" && (
+                                  <div className="flex justify-end gap-1.5 pt-1.5 border-t border-neutral-900">
+                                    <button
+                                      onClick={() => handleDenySuggestion(msg.id, i)}
+                                      className="rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-1 text-[10px] font-bold text-neutral-450 hover:text-white"
+                                    >
+                                      Decline
+                                    </button>
+                                    <button
+                                      onClick={() => void handleAcceptSuggestion(msg.id, i, sug)}
+                                      className="rounded-lg bg-[#FFB800] text-black px-2.5 py-1 text-[10px] font-bold"
+                                    >
+                                      Accept
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+                          return null;
+                        })}
                       </div>
                     </div>
                   )}

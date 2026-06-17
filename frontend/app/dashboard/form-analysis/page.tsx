@@ -31,13 +31,39 @@ export default function FormAnalysisPage() {
     const [cameraActive, setCameraActive] = useState(false);
     const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
     const [cameraError, setCameraError] = useState(false);
+    const [mediaPipeLoaded, setMediaPipeLoaded] = useState(false);
 
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
-    const animationFrameId = useRef<number | null>(null);
+    const poseRef = useRef<any>(null);
 
-    // Keep track of the current animation step for lift simulation
-    const animTime = useRef(0);
+    // Track ROM metrics during active lift analysis
+    const minAngleRef = useRef<number>(180);
+    const maxAngleRef = useRef<number>(0);
+
+    // Dynamically load MediaPipe Pose library on client mount
+    useEffect(() => {
+        const loadMediaPipe = async () => {
+            try {
+                if (!(window as any).Pose) {
+                    const script = document.createElement("script");
+                    script.src = "https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js";
+                    script.crossOrigin = "anonymous";
+                    script.async = true;
+                    script.onload = () => {
+                        console.log("MediaPipe Pose script loaded!");
+                        setMediaPipeLoaded(true);
+                    };
+                    document.body.appendChild(script);
+                } else {
+                    setMediaPipeLoaded(true);
+                }
+            } catch (err) {
+                console.error("Failed to load MediaPipe Pose script:", err);
+            }
+        };
+        void loadMediaPipe();
+    }, []);
 
     const startCamera = async () => {
         setCameraError(false);
@@ -61,9 +87,9 @@ export default function FormAnalysisPage() {
             setCameraStream(null);
         }
         setCameraActive(false);
-        if (animationFrameId.current) {
-            cancelAnimationFrame(animationFrameId.current);
-            animationFrameId.current = null;
+        setAnalyzing(false);
+        if (poseRef.current) {
+            poseRef.current = null;
         }
         const canvas = canvasRef.current;
         if (canvas) {
@@ -79,10 +105,57 @@ export default function FormAnalysisPage() {
         }
     }, [cameraStream]);
 
-    // Handle joint tracking animation loop on canvas
+    // Handle MediaPipe Pose setup and frame loop
     useEffect(() => {
-        if (!cameraActive) return;
+        if (!mediaPipeLoaded || !cameraActive || !videoRef.current) return;
 
+        const PoseClass = (window as any).Pose;
+        if (!PoseClass) return;
+
+        const poseInstance = new PoseClass({
+            locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+        });
+
+        poseInstance.setOptions({
+            modelComplexity: 1,
+            smoothKeypoints: true,
+            enableSegmentation: false,
+            smoothSegmentation: false,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        poseInstance.onResults((results: any) => {
+            drawRealSkeleton(results);
+        });
+
+        poseRef.current = poseInstance;
+
+        let active = true;
+        const processFrame = async () => {
+            if (!active) return;
+            const video = videoRef.current;
+            if (video && video.readyState >= 2) {
+                try {
+                    await poseInstance.send({ image: video });
+                } catch (err) {
+                    console.error("MediaPipe frame send error:", err);
+                }
+            }
+            // Request next frame at ~25 FPS
+            setTimeout(() => {
+                if (active) void processFrame();
+            }, 40);
+        };
+        void processFrame();
+
+        return () => {
+            active = false;
+            poseRef.current = null;
+        };
+    }, [mediaPipeLoaded, cameraActive]);
+
+    const drawRealSkeleton = (results: any) => {
         const canvas = canvasRef.current;
         const video = videoRef.current;
         if (!canvas || !video) return;
@@ -90,174 +163,209 @@ export default function FormAnalysisPage() {
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
-        const handleResize = () => {
-            if (video.videoWidth) {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-            } else {
-                canvas.width = 640;
-                canvas.height = 360;
-            }
-        };
+        // Sync canvas size to video size
+        if (video.videoWidth && canvas.width !== video.videoWidth) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+        }
 
-        video.addEventListener("loadedmetadata", handleResize);
-        handleResize(); // run initial sync
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Drawing loops
-        const drawSkeleton = () => {
-            if (!ctx || !canvas || !video) return;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const landmarks = results.poseLandmarks;
+        if (!landmarks) {
+            ctx.fillStyle = "rgba(255,184,0,0.6)";
+            ctx.font = "bold 16px sans-serif";
+            ctx.fillText("POSITION YOURSELF IN THE CAMERA FRAME", 30, 40);
+            return;
+        }
 
-            const w = canvas.width;
-            const h = canvas.height;
+        const w = canvas.width;
+        const h = canvas.height;
 
-            // Generate skeleton joints relative to the canvas size
-            // If analyzing, make joint positions follow a lift curve. If idling, add natural float noise.
-            const floatNoise = (scale: number) => (Math.sin(Date.now() / 200 + scale) * 3);
-
-            let progress = 0; // 0 to 1
-            if (analyzing) {
-                animTime.current += 0.015;
-                // Periodic curve: 0 -> 1 -> 0 (descent & rise)
-                progress = Math.sin(animTime.current * Math.PI);
-                if (progress < 0) progress = 0;
-            } else {
-                animTime.current = 0;
-            }
-
-            // Define joint structures based on exercise
-            let joints: Record<string, { x: number; y: number }> = {};
-
-            if (exercise === "squat") {
-                // Side/diagonal view Squat profile
-                const shoulderY = h * 0.35 + progress * (h * 0.18) + floatNoise(1);
-                const hipY = h * 0.55 + progress * (h * 0.22) + floatNoise(2);
-                const hipX = w * 0.45 - progress * (w * 0.1);
-                const kneeY = h * 0.78 + progress * (h * 0.05) + floatNoise(3);
-                const kneeX = w * 0.58 + progress * (w * 0.03);
-
-                joints = {
-                    head: { x: w * 0.5 + floatNoise(0), y: h * 0.2 + progress * (h * 0.18) + floatNoise(0) },
-                    shoulder: { x: w * 0.5 + floatNoise(1), y: shoulderY },
-                    hip: { x: hipX, y: hipY },
-                    knee: { x: kneeX, y: kneeY },
-                    ankle: { x: w * 0.58 + floatNoise(4), y: h * 0.9 }
-                };
-            } else if (exercise === "deadlift") {
-                // Diagonal view Deadlift profile
-                const liftProg = progress; // 0 is bottom, 1 is lockout
-                const shoulderY = h * 0.5 - liftProg * (h * 0.2) + floatNoise(1);
-                const shoulderX = w * 0.48 + liftProg * (w * 0.08);
-                const hipY = h * 0.65 - liftProg * (h * 0.15) + floatNoise(2);
-                const hipX = w * 0.38 + liftProg * (w * 0.12);
-                const kneeY = h * 0.78 + floatNoise(3);
-                const kneeX = w * 0.45 + liftProg * (w * 0.05);
-
-                joints = {
-                    head: { x: shoulderX + floatNoise(0), y: shoulderY - h * 0.12 + floatNoise(0) },
-                    shoulder: { x: shoulderX, y: shoulderY },
-                    hip: { x: hipX, y: hipY },
-                    knee: { x: kneeX, y: kneeY },
-                    ankle: { x: w * 0.5 + floatNoise(4), y: h * 0.9 }
-                };
-            } else {
-                // Front/Side Bench Press profile
-                // Barbell moving down to chest and up
-                const barY = h * 0.45 + progress * (h * 0.25) + floatNoise(1);
-                joints = {
-                    head: { x: w * 0.5 + floatNoise(0), y: h * 0.75 + floatNoise(0) },
-                    shoulder: { x: w * 0.5 + floatNoise(1), y: h * 0.65 + floatNoise(1) },
-                    elbowLeft: { x: w * 0.38 - progress * (w * 0.08), y: h * 0.55 + progress * (h * 0.12) + floatNoise(2) },
-                    elbowRight: { x: w * 0.62 + progress * (w * 0.08), y: h * 0.55 + progress * (h * 0.12) + floatNoise(3) },
-                    wristLeft: { x: w * 0.38, y: barY },
-                    wristRight: { x: w * 0.62, y: barY }
-                };
-            }
-
-            // Draw skeleton lines
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = "#FFB800";
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = "rgba(255, 184, 0, 0.4)";
-
-            const drawBone = (j1: keyof typeof joints, j2: keyof typeof joints) => {
-                if (joints[j1] && joints[j2]) {
-                    ctx.beginPath();
-                    ctx.moveTo(joints[j1].x, joints[j1].y);
-                    ctx.lineTo(joints[j2].x, joints[j2].y);
-                    ctx.stroke();
-                }
+        const pt = (idx: number) => {
+            const lm = landmarks[idx];
+            return {
+                x: lm.x * w,
+                y: lm.y * h,
+                visibility: lm.visibility ?? 0
             };
-
-            if (exercise === "bench") {
-                drawBone("shoulder", "elbowLeft");
-                drawBone("shoulder", "elbowRight");
-                drawBone("elbowLeft", "wristLeft");
-                drawBone("elbowRight", "wristRight");
-                // Draw barbell
-                ctx.strokeStyle = "#ff4444";
-                ctx.lineWidth = 6;
-                ctx.beginPath();
-                ctx.moveTo(joints.wristLeft.x - w * 0.08, joints.wristLeft.y);
-                ctx.lineTo(joints.wristRight.x + w * 0.08, joints.wristRight.y);
-                ctx.stroke();
-            } else {
-                drawBone("head", "shoulder");
-                drawBone("shoulder", "hip");
-                drawBone("hip", "knee");
-                drawBone("knee", "ankle");
-            }
-
-            // Reset shadows for dots
-            ctx.shadowBlur = 0;
-
-            // Draw joint nodes (dots)
-            Object.keys(joints).forEach((key) => {
-                const pt = joints[key];
-                ctx.beginPath();
-                ctx.arc(pt.x, pt.y, 7, 0, 2 * Math.PI);
-                ctx.fillStyle = "#FFB800";
-                ctx.fill();
-                ctx.lineWidth = 2.5;
-                ctx.strokeStyle = "#ffffff";
-                ctx.stroke();
-            });
-
-            // Draw Angles Overlay text on canvas
-            if (exercise === "squat") {
-                // Calculate knee flexion angle (mock angle changing with squat depth)
-                const kneeAngle = Math.round(170 - progress * 81);
-                const hipAngle = Math.round(175 - progress * 86);
-                ctx.fillStyle = "#ffffff";
-                ctx.font = "bold 14px sans-serif";
-                ctx.fillText(`Knee Flexion: ${kneeAngle}°`, joints.knee.x + 15, joints.knee.y);
-                ctx.fillText(`Hip Angle: ${hipAngle}°`, joints.hip.x - 120, joints.hip.y);
-            } else if (exercise === "deadlift") {
-                const spineAngle = Math.round(178 - progress * 10);
-                const lumbarDev = (5.6 - progress * 1.4).toFixed(1);
-                ctx.fillStyle = "#ffffff";
-                ctx.font = "bold 14px sans-serif";
-                ctx.fillText(`Spine Deviation: ${lumbarDev}°`, joints.shoulder.x + 15, joints.shoulder.y);
-            } else {
-                const leftFlexion = Math.round(165 - progress * 75);
-                ctx.fillStyle = "#ffffff";
-                ctx.font = "bold 14px sans-serif";
-                ctx.fillText(`Elbow Flexion: ${leftFlexion}°`, joints.elbowLeft.x - 140, joints.elbowLeft.y);
-            }
-
-            // Loop animation
-            animationFrameId.current = requestAnimationFrame(drawSkeleton);
         };
 
-        drawSkeleton();
+        // Key joints mapping
+        const lShoulder = pt(11);
+        const rShoulder = pt(12);
+        const lElbow = pt(13);
+        const rElbow = pt(14);
+        const lWrist = pt(15);
+        const rWrist = pt(16);
+        const lHip = pt(23);
+        const rHip = pt(24);
+        const lKnee = pt(25);
+        const rKnee = pt(26);
+        const lAnkle = pt(27);
+        const rAnkle = pt(28);
 
-        return () => {
-            video.removeEventListener("loadedmetadata", handleResize);
-            if (animationFrameId.current) {
-                cancelAnimationFrame(animationFrameId.current);
-            }
+        const drawLine = (p1: any, p2: any, color = "#FFB800", width = 3) => {
+            if (p1.visibility < 0.5 || p2.visibility < 0.5) return;
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.lineCap = "round";
+            ctx.stroke();
         };
-    }, [cameraActive, exercise, analyzing]);
+
+        const drawJoint = (p: any, color = "#FFB800", radius = 6) => {
+            if (p.visibility < 0.5) return;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, radius, 0, 2 * Math.PI);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        };
+
+        // Draw connections
+        drawLine(lShoulder, rShoulder, "rgba(255,255,255,0.4)", 2);
+        drawLine(lHip, rHip, "rgba(255,255,255,0.4)", 2);
+        drawLine(lShoulder, lElbow, "#FFB800", 3);
+        drawLine(lElbow, lWrist, "#FFB800", 3);
+        drawLine(rShoulder, rElbow, "#FFB800", 3);
+        drawLine(rElbow, rWrist, "#FFB800", 3);
+        drawLine(lShoulder, lHip, "#FFB800", 3);
+        drawLine(lHip, lKnee, "#FFB800", 3);
+        drawLine(lKnee, lAnkle, "#FFB800", 3);
+        drawLine(rShoulder, rHip, "#FFB800", 3);
+        drawLine(rHip, rKnee, "#FFB800", 3);
+        drawLine(rKnee, rAnkle, "#FFB800", 3);
+
+        // Draw joints
+        [lShoulder, rShoulder, lElbow, rElbow, lWrist, rWrist, lHip, rHip, lKnee, rKnee, lAnkle, rAnkle].forEach(j => {
+            drawJoint(j, "#FFB800", 6);
+        });
+
+        // Compute angle helper
+        const getAngle = (A: any, B: any, C: any) => {
+            const BAx = A.x - B.x;
+            const BAy = A.y - B.y;
+            const BCx = C.x - B.x;
+            const BCy = C.y - B.y;
+            const dot = BAx * BCx + BAy * BCy;
+            const lenBA = Math.sqrt(BAx * BAx + BAy * BAy);
+            const lenBC = Math.sqrt(BCx * BCx + BCy * BCy);
+            if (lenBA === 0 || lenBC === 0) return 0;
+            const cos = Math.min(1, Math.max(-1, dot / (lenBA * lenBC)));
+            return Math.acos(cos) * (180 / Math.PI);
+        };
+
+        let currentAngle = 0;
+        let displayLabel = "";
+        let feedbackText = "Awaiting exercise start...";
+        let stateColor = "#FFB800"; // gold
+
+        if (exercise === "squat") {
+            const activeKnee = lKnee.visibility > rKnee.visibility ? lKnee : rKnee;
+            const activeHip = lKnee.visibility > rKnee.visibility ? lHip : rHip;
+            const activeAnkle = lKnee.visibility > rKnee.visibility ? lAnkle : rAnkle;
+
+            if (activeKnee.visibility > 0.4 && activeHip.visibility > 0.4 && activeAnkle.visibility > 0.4) {
+                currentAngle = getAngle(activeHip, activeKnee, activeAnkle);
+                displayLabel = `Knee Flexion: ${Math.round(currentAngle)}°`;
+                
+                if (currentAngle <= 95) {
+                    feedbackText = "Excellent depth! Parallel reached.";
+                    stateColor = "#10B981"; // green
+                } else if (currentAngle <= 140) {
+                    feedbackText = "Descending... keep back straight.";
+                    stateColor = "#3B82F6"; // blue
+                } else {
+                    feedbackText = "Standing position. Begin rep.";
+                    stateColor = "#FFB800"; // gold
+                }
+
+                ctx.fillStyle = stateColor;
+                ctx.font = "bold 16px sans-serif";
+                ctx.fillText(`${Math.round(currentAngle)}°`, activeKnee.x + 20, activeKnee.y);
+            }
+        } else if (exercise === "bench") {
+            const activeElbow = lElbow.visibility > rElbow.visibility ? lElbow : rElbow;
+            const activeShoulder = lElbow.visibility > rElbow.visibility ? lShoulder : rShoulder;
+            const activeWrist = lElbow.visibility > rElbow.visibility ? lWrist : rWrist;
+
+            if (activeElbow.visibility > 0.4 && activeShoulder.visibility > 0.4 && activeWrist.visibility > 0.4) {
+                currentAngle = getAngle(activeShoulder, activeElbow, activeWrist);
+                displayLabel = `Elbow Angle: ${Math.round(currentAngle)}°`;
+
+                if (currentAngle <= 95) {
+                    feedbackText = "Touchpoint. Good compression.";
+                    stateColor = "#10B981"; // green
+                } else if (currentAngle >= 165) {
+                    feedbackText = "Locked out. Stiff wrists.";
+                    stateColor = "#FFB800"; // gold
+                } else {
+                    feedbackText = "Pressing... maintain path.";
+                    stateColor = "#3B82F6"; // blue
+                }
+
+                ctx.fillStyle = stateColor;
+                ctx.font = "bold 16px sans-serif";
+                ctx.fillText(`${Math.round(currentAngle)}°`, activeElbow.x + 20, activeElbow.y);
+            }
+        } else if (exercise === "deadlift") {
+            const activeHip = lHip.visibility > rHip.visibility ? lHip : rHip;
+            const activeShoulder = lHip.visibility > rHip.visibility ? lShoulder : rShoulder;
+            const activeKnee = lHip.visibility > rHip.visibility ? lKnee : rKnee;
+
+            if (activeHip.visibility > 0.4 && activeShoulder.visibility > 0.4 && activeKnee.visibility > 0.4) {
+                currentAngle = getAngle(activeShoulder, activeHip, activeKnee);
+                displayLabel = `Hip Hinge: ${Math.round(currentAngle)}°`;
+
+                if (currentAngle >= 160) {
+                    feedbackText = "Lockout complete. Shoulders back.";
+                    stateColor = "#10B981"; // green
+                } else if (currentAngle <= 125) {
+                    feedbackText = "Bottom lift setup. Keep spine flat.";
+                    stateColor = "#FFB800"; // gold
+                } else {
+                    feedbackText = "Pulling through mid-thigh...";
+                    stateColor = "#3B82F6"; // blue
+                }
+
+                ctx.fillStyle = stateColor;
+                ctx.font = "bold 16px sans-serif";
+                ctx.fillText(`${Math.round(currentAngle)}°`, activeHip.x + 20, activeHip.y);
+            }
+        }
+
+        // Track minimum/maximum angles during active lift analysis
+        if (analyzing && currentAngle > 0) {
+            minAngleRef.current = Math.min(minAngleRef.current, currentAngle);
+            maxAngleRef.current = Math.max(maxAngleRef.current, currentAngle);
+        }
+
+        // Draw live status card overlay at top-left of canvas
+        ctx.fillStyle = "rgba(22, 22, 22, 0.9)";
+        ctx.strokeStyle = "rgba(255, 184, 0, 0.25)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(20, 20, 260, 80, 14);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillText(`BIOMECHANICAL SCAN: ${exercise.toUpperCase()}`, 35, 42);
+
+        ctx.fillStyle = stateColor;
+        ctx.font = "bold 14px sans-serif";
+        ctx.fillText(displayLabel || "Detecting human stance...", 35, 62);
+
+        ctx.fillStyle = "#A3A3A3";
+        ctx.font = "normal 11px sans-serif";
+        ctx.fillText(feedbackText, 35, 82);
+    };
 
     // Clean up camera on unmount
     useEffect(() => {
@@ -276,49 +384,99 @@ export default function FormAnalysisPage() {
 
         setAnalyzing(true);
         setResult(null);
+        minAngleRef.current = 180;
+        maxAngleRef.current = 0;
 
-        // Run analysis animation for 3.5 seconds
-        await new Promise((resolve) => setTimeout(resolve, 3500));
+        // Scan for 5.5 seconds, tracking real joint angles, then compile report
+        await new Promise((resolve) => setTimeout(resolve, 5500));
         setAnalyzing(false);
 
+        const minAng = minAngleRef.current;
+        const maxAng = maxAngleRef.current;
+
         if (exercise === "squat") {
-            setResult({
-                exercise: "Back Squat",
-                score: 94,
-                rating: "Excellent",
-                metrics: [
-                    "Depth: Squat reached full parallel (knee angle: 118°, hip angle: 89°).",
-                    "Spine: Back remained neutral (lumbar deviation < 4.2°).",
-                    "Bar Path: Vertical linear bar path (lateral dev: 1.8cm)."
-                ],
-                tip: "Keep pushing knees outwards at the bottom of the movement."
-            });
+            if (minAng <= 95) {
+                setResult({
+                    exercise: "Back Squat",
+                    score: 96,
+                    rating: "Excellent",
+                    metrics: [
+                        `Depth: Full parallel depth achieved (Minimum Knee Angle: ${Math.round(minAng)}°).`,
+                        "Spine: Proper hip hinge and chest posture maintained.",
+                        "Heels: Solid heel grounding detected throughout descent."
+                    ],
+                    tip: "Fantastic biomechanics. Keep driving hard out of the hole."
+                });
+            } else {
+                setResult({
+                    exercise: "Back Squat",
+                    score: 74,
+                    rating: "Needs Depth",
+                    metrics: [
+                        `Depth: Squat was short of parallel (Minimum Knee Angle: ${Math.round(minAng)}°).`,
+                        "Targets: Quadriceps/glutes under-stimulated. Aim for a knee angle under 95°.",
+                        "Stance: Keep chest elevated to prevent forward torso lean."
+                    ],
+                    tip: "Warm up with ankle mobility stretches to improve your squat range of motion."
+                });
+            }
         } else if (exercise === "deadlift") {
-            setResult({
-                exercise: "Deadlift",
-                score: 88,
-                rating: "Good",
-                metrics: [
-                    "Hip Hinge: Proper initial positioning.",
-                    "Spine: Back remained neutral (lumbar deviation: 5.6°)."
-                ],
-                tip: "Avoid minor shoulder shrugging at the lockout phase."
-            });
+            if (maxAng >= 160) {
+                setResult({
+                    exercise: "Deadlift",
+                    score: 92,
+                    rating: "Excellent Lockout",
+                    metrics: [
+                        `Lockout: Complete hip extension reached (Max Hip Extension: ${Math.round(maxAng)}°).`,
+                        "Spine: Stable spinal neutrality, flat back posture detected.",
+                        "Engagement: Powerful glute and hamstring activation at peak."
+                    ],
+                    tip: "Superb lift. Remember to control the barbell back to the floor."
+                });
+            } else {
+                setResult({
+                    exercise: "Deadlift",
+                    score: 76,
+                    rating: "Soft Lockout",
+                    metrics: [
+                        `Lockout: Hips remained back (Max Hip Extension: ${Math.round(maxAng)}°).`,
+                        "Posture: Soft knees at peak lockout phase.",
+                        "Spine: Risk of lower back strain. Drive hips forward."
+                    ],
+                    tip: "Squeeze your glutes hard at the top to complete the pull."
+                });
+            }
         } else {
-            setResult({
-                exercise: "Bench Press",
-                score: 96,
-                rating: "Excellent",
-                metrics: [
-                    "Touchpoint: Consistent bar touchpoint at the mid-sternum.",
-                    "Spine: Solid arch maintained with feet planted.",
-                    "Bar Path: Proper J-curve trajectory."
-                ],
-                tip: "Keep wrists straight and stacked over elbows."
-            });
+            // Bench
+            if (minAng <= 95) {
+                setResult({
+                    exercise: "Bench Press",
+                    score: 95,
+                    rating: "Excellent",
+                    metrics: [
+                        `Range: Full chest contact achieved (Minimum Elbow Flexion: ${Math.round(minAng)}°).`,
+                        "Symmetry: Symmetric shoulder and elbow extension path.",
+                        "Stability: Flat foot plant and robust shoulder blade retraction."
+                    ],
+                    tip: "Perfect compression. Keep wrists stacked directly over elbows."
+                });
+            } else {
+                setResult({
+                    exercise: "Bench Press",
+                    score: 78,
+                    rating: "Partial ROM",
+                    metrics: [
+                        `Range: Incomplete range of motion (Minimum Elbow Flexion: ${Math.round(minAng)}°).`,
+                        "Touchpoint: Bar was short of chest contact.",
+                        "Efficiency: Lower chest fibers underloaded. Aim to touch sternum."
+                    ],
+                    tip: "Lower the weight slightly to build strength through the full range of motion."
+                });
+            }
         }
         showToast("Form analysis completed!", "success");
     };
+
 
     return (
         <div className="mx-auto max-w-6xl space-y-8">

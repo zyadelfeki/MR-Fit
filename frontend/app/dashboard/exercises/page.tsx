@@ -2,11 +2,12 @@
  
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, Award, Dumbbell, AlertCircle, ChevronRight, X } from "lucide-react";
+import { Search, Award, Dumbbell, AlertCircle, ChevronRight, X, Edit2, Save, Plus } from "lucide-react";
 import RevealOnScroll from "@/components/RevealOnScroll";
+import { showToast } from "@/lib/toast";
 
 type ExerciseResult = {
-    id: number;
+    id: number | string;
     name: string;
     description: string;
     category: string;
@@ -41,6 +42,21 @@ export default function ExercisesPage() {
     const [loading, setLoading] = useState(true);
     const [selectedExercise, setSelectedExercise] = useState<ExerciseResult | null>(null);
 
+    // Edit Mode States
+    const [isEditing, setIsEditing] = useState(false);
+    const [editName, setEditName] = useState("");
+    const [editCategory, setEditCategory] = useState("");
+    const [editEquipment, setEditEquipment] = useState("");
+    const [editDescription, setEditDescription] = useState("");
+
+    // Add to Workout States
+    const [workouts, setWorkouts] = useState<any[]>([]);
+    const [selectedWorkoutId, setSelectedWorkoutId] = useState("");
+    const [addSets, setAddSets] = useState(3);
+    const [addReps, setAddReps] = useState(10);
+    const [addWeight, setAddWeight] = useState<number | "">("");
+    const [isAddingToWorkout, setIsAddingToWorkout] = useState(false);
+
     const debouncedQuery = useMemo(() => query.trim(), [query]);
 
     useEffect(() => {
@@ -59,6 +75,98 @@ export default function ExercisesPage() {
         }, 400);
         return () => clearTimeout(timeout);
     }, [debouncedQuery, activeMuscle]);
+
+    // Fetch user workouts on mount
+    useEffect(() => {
+        const fetchWorkouts = async () => {
+            try {
+                const res = await fetch("/api/workouts");
+                if (res.ok) {
+                    const data = await res.json();
+                    setWorkouts(data.workouts || []);
+                }
+            } catch (err) {
+                console.error("Failed to load workouts:", err);
+            }
+        };
+        fetchWorkouts();
+    }, []);
+
+    const startEditing = (exercise: ExerciseResult) => {
+        setEditName(exercise.name);
+        setEditCategory(exercise.category);
+        setEditEquipment(exercise.equipment.join(", "));
+        setEditDescription(exercise.description);
+        setIsEditing(true);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!selectedExercise) return;
+        try {
+            const res = await fetch("/api/exercises/update", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: selectedExercise.name,
+                    newName: editName,
+                    description: editDescription,
+                    muscle_group: editCategory,
+                    equipment: editEquipment
+                })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const updatedEx: ExerciseResult = {
+                    ...selectedExercise,
+                    name: editName,
+                    category: editCategory,
+                    description: editDescription,
+                    equipment: editEquipment.split(",").map(item => item.trim()).filter(Boolean)
+                };
+                // Update lists
+                setResults(prev => prev.map(ex => ex.name.toLowerCase() === selectedExercise.name.toLowerCase() ? updatedEx : ex));
+                setSelectedExercise(updatedEx);
+                setIsEditing(false);
+                showToast("Exercise updated successfully", "success");
+            } else {
+                throw new Error("Update failed");
+            }
+        } catch {
+            showToast("Failed to update exercise", "error");
+        }
+    };
+
+    const handleAddToWorkout = async () => {
+        if (!selectedWorkoutId || !selectedExercise) {
+            showToast("Please select a workout", "error");
+            return;
+        }
+        setIsAddingToWorkout(true);
+        try {
+            const res = await fetch(`/api/workouts/${selectedWorkoutId}/exercises`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    exercise_name: selectedExercise.name,
+                    sets: addSets,
+                    reps: addReps,
+                    weight_kg: addWeight === "" ? null : Number(addWeight)
+                })
+            });
+            if (res.ok) {
+                showToast("Exercise added to workout logs!", "success");
+                setSelectedWorkoutId("");
+                setAddWeight("");
+            } else {
+                const data = await res.json();
+                throw new Error(data.error || "Failed to add exercise");
+            }
+        } catch (err: any) {
+            showToast(err.message || "Failed to add to workout", "error");
+        } finally {
+            setIsAddingToWorkout(false);
+        }
+    };
 
     return (
         <div className="mx-auto max-w-6xl space-y-6">
@@ -126,7 +234,10 @@ export default function ExercisesPage() {
                     {results.map((exercise) => (
                         <article
                             key={`${exercise.id}-${exercise.name}`}
-                            onClick={() => setSelectedExercise(exercise)}
+                            onClick={() => {
+                                setSelectedExercise(exercise);
+                                setIsEditing(false);
+                            }}
                             className="relative flex h-full flex-col rounded-2xl border border-neutral-850 bg-[#161616] p-5 hover:border-neutral-750 transition-all hover:scale-[1.02] justify-between cursor-pointer"
                         >
                             <div>
@@ -188,44 +299,191 @@ export default function ExercisesPage() {
                             <X className="h-4 w-4" />
                         </button>
 
-                        <div className="space-y-3">
-                            <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold ${categoryBadge(selectedExercise.category)}`}>
-                                {selectedExercise.category}
-                            </span>
-                            <h2 className="text-xl md:text-2xl font-bold text-white leading-tight">
-                                {selectedExercise.name}
-                            </h2>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-neutral-950 border border-neutral-850 rounded-2xl p-4 text-xs">
-                            <div className="space-y-1">
-                                <span className="text-neutral-500 uppercase tracking-wider font-semibold block text-[10px]">Primary Target</span>
-                                <span className="text-neutral-200 font-bold">
-                                    {selectedExercise.muscles.length > 0 ? selectedExercise.muscles.join(", ") : "None specified"}
-                                </span>
-                            </div>
-                            {selectedExercise.musclesSecondary && selectedExercise.musclesSecondary.length > 0 && (
-                                <div className="space-y-1">
-                                    <span className="text-neutral-500 uppercase tracking-wider font-semibold block text-[10px]">Secondary Targets</span>
-                                    <span className="text-neutral-300 font-semibold">
-                                        {selectedExercise.musclesSecondary.join(", ")}
-                                    </span>
+                        {isEditing ? (
+                            /* EDIT MODE FORM */
+                            <div className="space-y-4 pt-2">
+                                <h3 className="text-lg font-bold text-[#FFB800] font-heading uppercase tracking-wider flex items-center gap-2">
+                                    <Edit2 className="h-4 w-4" /> Edit Exercise Details
+                                </h3>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-[10px] uppercase font-bold text-neutral-500 mb-1">Exercise Name</label>
+                                        <input
+                                            type="text"
+                                            value={editName}
+                                            onChange={(e) => setEditName(e.target.value)}
+                                            className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-xs text-white focus:border-[#FFB800] focus:outline-none"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-[10px] uppercase font-bold text-neutral-500 mb-1">Target Muscle Group</label>
+                                            <input
+                                                type="text"
+                                                value={editCategory}
+                                                onChange={(e) => setEditCategory(e.target.value)}
+                                                className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-xs text-white focus:border-[#FFB800] focus:outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] uppercase font-bold text-neutral-500 mb-1">Equipment</label>
+                                            <input
+                                                type="text"
+                                                value={editEquipment}
+                                                onChange={(e) => setEditEquipment(e.target.value)}
+                                                placeholder="e.g. Barbell, Dumbbell"
+                                                className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-xs text-white focus:border-[#FFB800] focus:outline-none"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] uppercase font-bold text-neutral-500 mb-1">Instructions / Description</label>
+                                        <textarea
+                                            rows={5}
+                                            value={editDescription}
+                                            onChange={(e) => setEditDescription(e.target.value)}
+                                            className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-xs text-white focus:border-[#FFB800] focus:outline-none resize-none leading-relaxed"
+                                        />
+                                    </div>
                                 </div>
-                            )}
-                            <div className="space-y-1 col-span-1 sm:col-span-2 border-t border-neutral-900 pt-3">
-                                <span className="text-neutral-500 uppercase tracking-wider font-semibold block text-[10px]">Equipment Required</span>
-                                <span className="text-neutral-200 font-bold">
-                                    {selectedExercise.equipment.length > 0 ? selectedExercise.equipment.join(", ") : "No equipment required"}
-                                </span>
+                                <div className="flex justify-end gap-2 pt-2 border-t border-neutral-850">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsEditing(false)}
+                                        className="rounded-xl border border-neutral-850 bg-neutral-900 hover:bg-neutral-850 px-4 py-2 text-xs font-bold text-neutral-300 transition"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleSaveEdit}
+                                        className="rounded-xl bg-[#FFB800] text-black hover:bg-[#CC9400] px-4 py-2 text-xs font-bold transition flex items-center gap-1.5"
+                                    >
+                                        <Save className="h-3.5 w-3.5" /> Save Changes
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            /* DETAILS & WORKOUT ADDITION MODE */
+                            <>
+                                <div className="space-y-3">
+                                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold ${categoryBadge(selectedExercise.category)}`}>
+                                        {selectedExercise.category}
+                                    </span>
+                                    <h2 className="text-xl md:text-2xl font-bold text-white leading-tight">
+                                        {selectedExercise.name}
+                                    </h2>
+                                </div>
 
-                        <div className="space-y-2">
-                            <h4 className="text-xs font-bold text-[#FFB800] uppercase tracking-wider">Instructions & Context</h4>
-                            <p className="text-xs md:text-sm text-neutral-350 leading-relaxed max-h-60 overflow-y-auto pr-2">
-                                {selectedExercise.description || "No description available for this exercise."}
-                            </p>
-                        </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-neutral-950 border border-neutral-850 rounded-2xl p-4 text-xs">
+                                    <div className="space-y-1">
+                                        <span className="text-neutral-500 uppercase tracking-wider font-semibold block text-[10px]">Primary Target</span>
+                                        <span className="text-neutral-200 font-bold">
+                                            {selectedExercise.muscles && selectedExercise.muscles.length > 0 ? selectedExercise.muscles.join(", ") : "None specified"}
+                                        </span>
+                                    </div>
+                                    {selectedExercise.musclesSecondary && selectedExercise.musclesSecondary.length > 0 && (
+                                        <div className="space-y-1">
+                                            <span className="text-neutral-500 uppercase tracking-wider font-semibold block text-[10px]">Secondary Targets</span>
+                                            <span className="text-neutral-300 font-semibold">
+                                                {selectedExercise.musclesSecondary.join(", ")}
+                                            </span>
+                                        </div>
+                                    )}
+                                    <div className="space-y-1 col-span-1 sm:col-span-2 border-t border-neutral-900 pt-3">
+                                        <span className="text-neutral-500 uppercase tracking-wider font-semibold block text-[10px]">Equipment Required</span>
+                                        <span className="text-neutral-200 font-bold">
+                                            {selectedExercise.equipment.length > 0 ? selectedExercise.equipment.join(", ") : "No equipment required"}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <h4 className="text-xs font-bold text-[#FFB800] uppercase tracking-wider">Instructions & Context</h4>
+                                    <p className="text-xs md:text-sm text-neutral-350 leading-relaxed max-h-40 overflow-y-auto pr-2">
+                                        {selectedExercise.description || "No description available for this exercise."}
+                                    </p>
+                                </div>
+
+                                {/* ADD TO WORKOUT CONTROL PANEL */}
+                                <div className="border-t border-neutral-850 pt-4 space-y-3">
+                                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">Add to Workout Logs</h4>
+                                    <div className="flex flex-wrap gap-2.5 items-end bg-neutral-950/50 p-3 rounded-2xl border border-neutral-850">
+                                        <div className="flex-1 min-w-[150px]">
+                                            <label className="block text-[9px] uppercase font-bold text-neutral-500 mb-1">Select Workout Session</label>
+                                            <select
+                                                value={selectedWorkoutId}
+                                                onChange={(e) => setSelectedWorkoutId(e.target.value)}
+                                                className="w-full rounded-xl border border-neutral-800 bg-neutral-900 p-2 text-xs text-white focus:border-[#FFB800] focus:outline-none"
+                                            >
+                                                <option value="">-- Choose active session --</option>
+                                                {workouts.map((w) => (
+                                                    <option key={w.id} value={w.id}>
+                                                        {w.title} ({new Date(w.created_at).toLocaleDateString()})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="w-14">
+                                            <label className="block text-[9px] uppercase font-bold text-neutral-500 mb-1">Sets</label>
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                value={addSets}
+                                                onChange={(e) => setAddSets(Math.max(1, Number(e.target.value)))}
+                                                className="w-full rounded-xl border border-neutral-800 bg-neutral-900 p-2 text-xs text-white text-center focus:border-[#FFB800]"
+                                            />
+                                        </div>
+                                        <div className="w-14">
+                                            <label className="block text-[9px] uppercase font-bold text-neutral-500 mb-1">Reps</label>
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                value={addReps}
+                                                onChange={(e) => setAddReps(Math.max(1, Number(e.target.value)))}
+                                                className="w-full rounded-xl border border-neutral-800 bg-neutral-900 p-2 text-xs text-white text-center focus:border-[#FFB800]"
+                                            />
+                                        </div>
+                                        <div className="w-16">
+                                            <label className="block text-[9px] uppercase font-bold text-neutral-500 mb-1">Weight (kg)</label>
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                placeholder="BW"
+                                                value={addWeight}
+                                                onChange={(e) => setAddWeight(e.target.value === "" ? "" : Number(e.target.value))}
+                                                className="w-full rounded-xl border border-neutral-800 bg-neutral-900 p-2 text-xs text-white text-center focus:border-[#FFB800]"
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleAddToWorkout}
+                                            disabled={isAddingToWorkout || !selectedWorkoutId}
+                                            className="rounded-xl bg-white text-black hover:bg-[#FFB800] disabled:opacity-50 px-4 py-2 text-xs font-bold transition flex items-center gap-1"
+                                        >
+                                            <Plus className="h-3.5 w-3.5" /> Log
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-between items-center pt-2 border-t border-neutral-850">
+                                    <button
+                                        type="button"
+                                        onClick={() => startEditing(selectedExercise)}
+                                        className="rounded-xl border border-neutral-850 bg-neutral-900 hover:bg-neutral-850 px-4 py-2 text-xs font-bold text-neutral-300 transition flex items-center gap-1.5"
+                                    >
+                                        <Edit2 className="h-3.5 w-3.5 text-[#FFB800]" /> Edit Exercise Details
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedExercise(null)}
+                                        className="rounded-xl bg-neutral-900 border border-neutral-800 px-4 py-2 text-xs font-bold text-white hover:bg-neutral-850 transition"
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
