@@ -200,10 +200,13 @@ async def parse_entry(req: ParseEntryRequest):
 
 def strip_thinking_tags(text: str) -> str:
     import re
-    # Remove anything between <think> and </think> (non-greedy, dotall to match newlines)
-    text = re.sub(r'<think>[\s\S]*?</think>', '', text)
-    # Also remove any stray </think> or <think> if the model didn't close/open them properly
-    text = text.replace('<think>', '').replace('</think>', '')
+    # Check for case-insensitive </think> tag
+    match = re.search(r'</think>', text, re.IGNORECASE)
+    if match:
+        # Split at the end of the matched </think> tag
+        text = text[match.end():]
+    # Also strip any leftover tags case-insensitively
+    text = re.sub(r'</?think>', '', text, flags=re.IGNORECASE)
     return text.strip()
 
 @app.post("/recommend")
