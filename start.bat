@@ -15,16 +15,22 @@ set ROOT=%~dp0
 set AI_DIR=%ROOT%ai
 set FRONTEND_DIR=%ROOT%frontend
 
-:: --- Ensure WSL PostgreSQL database is running ---
-echo [0/4] Ensuring PostgreSQL database is active in WSL...
-wsl -d Ubuntu -u root service postgresql start
+:: --- Check if port 5432 is already in use (e.g. by native Windows PostgreSQL) ---
+netstat -ano | findstr "0.0.0.0:5432 127.0.0.1:5432 [::]:5432" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [0/4] Native PostgreSQL detected on port 5432. Skipping WSL2 database and relay.
+) else (
+    :: --- Ensure WSL PostgreSQL database is running ---
+    echo [0/4] Ensuring PostgreSQL database is active in WSL...
+    wsl -d Ubuntu -u root service postgresql start
 
-:: --- Start PostgreSQL relay (bridges WSL2 PostgreSQL to Windows localhost:5432) ---
-echo [1/4] Starting PostgreSQL relay (WSL2 bridge)...
-start "MR-Fit PG Relay" powershell -NoExit -Command "cd '%ROOT%'; Write-Host '=== MR-Fit PG Relay ===' -ForegroundColor Yellow; node pg-proxy.js"
+    :: --- Start PostgreSQL relay (bridges WSL2 PostgreSQL to Windows localhost:5432) ---
+    echo [1/4] Starting PostgreSQL relay (WSL2 bridge)...
+    start "MR-Fit PG Relay" powershell -NoExit -Command "cd '%ROOT%'; Write-Host '=== MR-Fit PG Relay ===' -ForegroundColor Yellow; node pg-proxy.js"
 
-:: --- Wait 3 seconds for relay to bind ---
-timeout /t 3 /nobreak >nul
+    :: --- Wait 3 seconds for relay to bind ---
+    timeout /t 3 /nobreak >nul
+)
 
 :: --- Launch AI (uvicorn) in a new PowerShell tab ---
 echo [2/4] Starting FastAPI AI Coach (port 8000)...

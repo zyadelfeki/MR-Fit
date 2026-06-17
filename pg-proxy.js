@@ -12,7 +12,7 @@ const net = require('net');
 const { spawn } = require('child_process');
 
 const LISTEN_HOST = '127.0.0.1';
-const LISTEN_PORT = 5435;
+const LISTEN_PORT = 5432;
 
 // Check if wsl is available and nc is in WSL2
 const { execSync } = require('child_process');
