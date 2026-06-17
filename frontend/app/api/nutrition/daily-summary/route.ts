@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import pool from "@/lib/db";
+import { withDb } from "@/lib/db";
 
 type MacroTotals = {
     calories: number;
@@ -21,32 +21,51 @@ function toNumber(value: unknown): number {
     return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
     const session = await auth();
     if (!session?.user?.id) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    try {
-        const totalsRes = await pool.query(
-            `SELECT
-                COALESCE(SUM(calories), 0) AS calories,
-                COALESCE(SUM(protein_g), 0) AS protein,
-                COALESCE(SUM(carbs_g), 0) AS carbs,
-                COALESCE(SUM(fat_g), 0) AS fat
-             FROM nutrition_logs
-             WHERE user_id = $1
-                             AND DATE(logged_at AT TIME ZONE 'UTC') = CURRENT_DATE`,
-            [session.user.id]
-        );
+    const userId = session.user.id;
 
-        const goalsRes = await pool.query(
-            `SELECT to_jsonb(u) AS user_payload
-             FROM users u
-             WHERE u.id = $1
-             LIMIT 1`,
-            [session.user.id]
-        );
+    try {
+        const { searchParams } = new URL(req.url);
+        const dateParam = searchParams.get("date"); // YYYY-MM-DD format
+
+        const { totalsRes, goalsRes } = await withDb(async (client) => {
+            const totalsQuery = dateParam
+                ? `SELECT
+                     COALESCE(SUM(calories), 0) AS calories,
+                     COALESCE(SUM(protein_g), 0) AS protein,
+                     COALESCE(SUM(carbs_g), 0) AS carbs,
+                     COALESCE(SUM(fat_g), 0) AS fat
+                   FROM nutrition_logs
+                   WHERE user_id = $1
+                     AND DATE(logged_at AT TIME ZONE 'UTC') = $2`
+                : `SELECT
+                     COALESCE(SUM(calories), 0) AS calories,
+                     COALESCE(SUM(protein_g), 0) AS protein,
+                     COALESCE(SUM(carbs_g), 0) AS carbs,
+                     COALESCE(SUM(fat_g), 0) AS fat
+                   FROM nutrition_logs
+                   WHERE user_id = $1
+                     AND DATE(logged_at AT TIME ZONE 'UTC') = DATE(NOW() AT TIME ZONE 'UTC')`;
+
+            const totalsParams = dateParam ? [userId, dateParam] : [userId];
+
+            const tRes = await client.query(totalsQuery, totalsParams);
+
+            const gRes = await client.query(
+                `SELECT to_jsonb(u) AS user_payload
+                 FROM users u
+                 WHERE u.id = $1
+                 LIMIT 1`,
+                [userId]
+            );
+
+            return { totalsRes: tRes, goalsRes: gRes };
+        });
 
         const totalsRow = totalsRes.rows[0] as Record<string, unknown> | undefined;
         const userPayload =

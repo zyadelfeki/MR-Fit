@@ -1,23 +1,41 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import pool from "@/lib/db";
+import { withDb } from "@/lib/db";
 
-// GET /api/nutrition — today's nutrition logs for the current user
-export async function GET() {
+// GET /api/nutrition — nutrition logs for the current user (defaults to today in UTC or a specific date)
+export async function GET(req: Request) {
     const session = await auth();
     if (!session?.user?.id) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const userId = session.user.id;
+
     try {
-        const res = await pool.query(
-            `SELECT id, food_name, calories, protein_g, carbs_g, fat_g, logged_at
-       FROM nutrition_logs
-       WHERE user_id = $1
-                 AND DATE(logged_at AT TIME ZONE 'UTC') = CURRENT_DATE
-       ORDER BY logged_at DESC`,
-                        [session.user.id]
-        );
+        const { searchParams } = new URL(req.url);
+        const dateParam = searchParams.get("date"); // YYYY-MM-DD format
+
+        const res = await withDb(async (client) => {
+            if (dateParam) {
+                return await client.query(
+                    `SELECT id, food_name, calories, protein_g, carbs_g, fat_g, logged_at
+                     FROM nutrition_logs
+                     WHERE user_id = $1
+                       AND DATE(logged_at AT TIME ZONE 'UTC') = $2
+                     ORDER BY logged_at DESC`,
+                    [userId, dateParam]
+                );
+            } else {
+                return await client.query(
+                    `SELECT id, food_name, calories, protein_g, carbs_g, fat_g, logged_at
+                     FROM nutrition_logs
+                     WHERE user_id = $1
+                       AND DATE(logged_at AT TIME ZONE 'UTC') = DATE(NOW() AT TIME ZONE 'UTC')
+                     ORDER BY logged_at DESC`,
+                    [userId]
+                );
+            }
+        });
 
         return NextResponse.json({ logs: res.rows });
     } catch (err: any) {
@@ -33,6 +51,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const userId = session.user.id;
+
     try {
         const { food_name, calories, protein_g, carbs_g, fat_g, logged_at } =
             await req.json();
@@ -44,20 +64,22 @@ export async function POST(req: Request) {
             );
         }
 
-        const res = await pool.query(
-            `INSERT INTO nutrition_logs (user_id, food_name, calories, protein_g, carbs_g, fat_g, logged_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id`,
-            [
-                session.user.id,
-                food_name,
-                Number(calories),
-                protein_g !== "" && protein_g != null ? Number(protein_g) : null,
-                carbs_g !== "" && carbs_g != null ? Number(carbs_g) : null,
-                fat_g !== "" && fat_g != null ? Number(fat_g) : null,
-                logged_at || new Date().toISOString(),
-            ]
-        );
+        const res = await withDb(async (client) => {
+            return await client.query(
+                `INSERT INTO nutrition_logs (user_id, food_name, calories, protein_g, carbs_g, fat_g, logged_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)
+                 RETURNING id`,
+                [
+                    userId,
+                    food_name,
+                    Number(calories),
+                    protein_g !== "" && protein_g != null ? Number(protein_g) : null,
+                    carbs_g !== "" && carbs_g != null ? Number(carbs_g) : null,
+                    fat_g !== "" && fat_g != null ? Number(fat_g) : null,
+                    logged_at || new Date().toISOString(),
+                ]
+            );
+        });
 
         return NextResponse.json({ success: true, id: res.rows[0].id });
     } catch (err: any) {
@@ -73,6 +95,8 @@ export async function DELETE(req: Request) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const userId = session.user.id;
+
     try {
         const { searchParams } = new URL(req.url);
         const id = searchParams.get("id");
@@ -81,11 +105,12 @@ export async function DELETE(req: Request) {
             return NextResponse.json({ error: "id is required" }, { status: 400 });
         }
 
-        // Only delete if it belongs to the current user
-        await pool.query(
-            "DELETE FROM nutrition_logs WHERE id = $1 AND user_id = $2",
-            [id, session.user.id]
-        );
+        await withDb(async (client) => {
+            await client.query(
+                "DELETE FROM nutrition_logs WHERE id = $1 AND user_id = $2",
+                [id, userId]
+            );
+        });
 
         return NextResponse.json({ success: true });
     } catch (err: any) {

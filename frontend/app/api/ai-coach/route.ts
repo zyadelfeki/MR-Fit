@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import pool from "@/lib/db";
+import { withDb } from "@/lib/db";
 
 type IncomingMessage = {
     role: "system" | "user" | "assistant";
@@ -48,70 +48,71 @@ export async function POST(req: Request) {
 
         const userId = session.user.id;
 
-        const profileRes = await pool.query(
-            `SELECT p.display_name, p.date_of_birth, p.weight_kg, p.height_cm, p.fitness_goal,
-                    p.gender, p.fitness_level
-             FROM profiles p
-             WHERE p.user_id = $1
-             LIMIT 1`,
-            [userId]
-        );
-
-        const userRes = await pool.query(
-            `SELECT to_jsonb(u) AS user_payload
-             FROM users u
-             WHERE u.id = $1
-             LIMIT 1`,
-            [userId]
-        );
-
-        const nutritionRes = await pool.query(
-            `SELECT
-                COALESCE(SUM(calories), 0) AS calories,
-                COALESCE(SUM(protein_g), 0) AS protein,
-                COALESCE(SUM(carbs_g), 0) AS carbs,
-                COALESCE(SUM(fat_g), 0) AS fat
-             FROM nutrition_logs
-             WHERE user_id = $1
-               AND DATE(logged_at AT TIME ZONE 'UTC') = CURRENT_DATE`,
-            [userId]
-        );
-
-        const weeklyWorkoutsRes = await pool.query(
-            `SELECT
-                COUNT(*)::int AS total,
-                COALESCE(
-                    json_agg(
-                        json_build_object(
-                            'name', COALESCE(w.title, e.name, 'Workout'),
-                            'type', COALESCE(w.source, 'custom')
-                        )
-                        ORDER BY wl.logged_at DESC
-                    ) FILTER (WHERE wl.id IS NOT NULL),
-                    '[]'::json
-                ) AS workouts
-             FROM workout_logs wl
-             LEFT JOIN workouts w ON w.id = wl.workout_id
-             LEFT JOIN exercises e ON e.id = wl.exercise_id
-             WHERE wl.user_id = $1
-               AND wl.logged_at >= date_trunc('week', now() AT TIME ZONE 'UTC')`,
-            [userId]
-        );
-
-        const recentWorkoutRes = await pool.query(
-            `SELECT
-                COALESCE(w.title, e.name, 'Workout') AS name,
-                COALESCE(w.source, 'custom') AS type,
-                w.duration_min AS duration_minutes,
-                wl.logged_at
-             FROM workout_logs wl
-             LEFT JOIN workouts w ON w.id = wl.workout_id
-             LEFT JOIN exercises e ON e.id = wl.exercise_id
-             WHERE wl.user_id = $1
-             ORDER BY wl.logged_at DESC
-             LIMIT 1`,
-            [userId]
-        );
+        const { profileRes, userRes, nutritionRes, weeklyWorkoutsRes, recentWorkoutRes } = await withDb(async (client) => {
+            const [pRes, uRes, nRes, wRes, rRes] = await Promise.all([
+                client.query(
+                    `SELECT p.display_name, p.date_of_birth, p.weight_kg, p.height_cm, p.fitness_goal,
+                            p.gender, p.fitness_level
+                     FROM profiles p
+                     WHERE p.user_id = $1
+                     LIMIT 1`,
+                    [userId]
+                ),
+                client.query(
+                    `SELECT to_jsonb(u) AS user_payload
+                     FROM users u
+                     WHERE u.id = $1
+                     LIMIT 1`,
+                    [userId]
+                ),
+                client.query(
+                    `SELECT
+                        COALESCE(SUM(calories), 0) AS calories,
+                        COALESCE(SUM(protein_g), 0) AS protein,
+                        COALESCE(SUM(carbs_g), 0) AS carbs,
+                        COALESCE(SUM(fat_g), 0) AS fat
+                     FROM nutrition_logs
+                     WHERE user_id = $1
+                       AND DATE(logged_at AT TIME ZONE 'UTC') = DATE(NOW() AT TIME ZONE 'UTC')`,
+                    [userId]
+                ),
+                client.query(
+                    `SELECT
+                        COUNT(*)::int AS total,
+                        COALESCE(
+                            json_agg(
+                                json_build_object(
+                                    'name', COALESCE(w.title, e.name, 'Workout'),
+                                    'type', COALESCE(w.source, 'custom')
+                                )
+                                ORDER BY wl.logged_at DESC
+                            ) FILTER (WHERE wl.id IS NOT NULL),
+                            '[]'::json
+                        ) AS workouts
+                     FROM workout_logs wl
+                     LEFT JOIN workouts w ON w.id = wl.workout_id
+                     LEFT JOIN exercises e ON e.id = wl.exercise_id
+                     WHERE wl.user_id = $1
+                       AND wl.logged_at >= date_trunc('week', now() AT TIME ZONE 'UTC')`,
+                    [userId]
+                ),
+                client.query(
+                    `SELECT
+                        COALESCE(w.title, e.name, 'Workout') AS name,
+                        COALESCE(w.source, 'custom') AS type,
+                        w.duration_min AS duration_minutes,
+                        wl.logged_at
+                     FROM workout_logs wl
+                     LEFT JOIN workouts w ON w.id = wl.workout_id
+                     LEFT JOIN exercises e ON e.id = wl.exercise_id
+                     WHERE wl.user_id = $1
+                     ORDER BY wl.logged_at DESC
+                     LIMIT 1`,
+                    [userId]
+                ),
+            ]);
+            return { profileRes: pRes, userRes: uRes, nutritionRes: nRes, weeklyWorkoutsRes: wRes, recentWorkoutRes: rRes };
+        });
 
         const profile = profileRes.rows[0] as {
             display_name?: string | null;

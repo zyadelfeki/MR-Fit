@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import pool from "@/lib/db";
+import { withDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -13,20 +13,22 @@ export async function GET() {
     const thirtyAgo = new Date();
     thirtyAgo.setUTCDate(thirtyAgo.getUTCDate() - 30);
 
-    const [workoutDates, nutritionDates] = await Promise.all([
-      pool.query(
-        `SELECT DISTINCT DATE(logged_at AT TIME ZONE 'UTC') AS day
-           FROM workout_logs
-          WHERE user_id = $1 AND logged_at >= $2`,
-        [userId, thirtyAgo.toISOString()]
-      ),
-      pool.query(
-        `SELECT DISTINCT DATE(logged_at AT TIME ZONE 'UTC') AS day
-           FROM nutrition_logs
-          WHERE user_id = $1 AND logged_at >= $2`,
-        [userId, thirtyAgo.toISOString()]
-      ),
-    ]);
+    const [workoutDates, nutritionDates] = await withDb(async (client) => {
+      return await Promise.all([
+        client.query(
+          `SELECT DISTINCT DATE(logged_at AT TIME ZONE 'UTC') AS day
+             FROM workout_logs
+            WHERE user_id = $1 AND logged_at >= $2`,
+          [userId, thirtyAgo.toISOString()]
+        ),
+        client.query(
+          `SELECT DISTINCT DATE(logged_at AT TIME ZONE 'UTC') AS day
+             FROM nutrition_logs
+            WHERE user_id = $1 AND logged_at >= $2`,
+          [userId, thirtyAgo.toISOString()]
+        ),
+      ]);
+    });
 
     const activityDates = new Set<string>();
     [...workoutDates.rows, ...nutritionDates.rows].forEach((row) => {

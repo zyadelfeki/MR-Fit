@@ -211,7 +211,7 @@ export default function NutritionPage() {
   const fetchLogs = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/nutrition");
+      const res = await fetch(`/api/nutrition?date=${loggedDate}`);
       if (!res.ok) throw new Error("Failed to fetch logs");
       const data = await res.json();
       setLogs(data.logs ?? []);
@@ -224,7 +224,7 @@ export default function NutritionPage() {
 
   const fetchDailySummary = async () => {
     try {
-      const res = await fetch("/api/nutrition/daily-summary", { cache: "no-store" });
+      const res = await fetch(`/api/nutrition/daily-summary?date=${loggedDate}`, { cache: "no-store" });
       if (!res.ok) throw new Error();
       const data = (await res.json()) as DailySummary;
       setSummary({
@@ -252,7 +252,7 @@ export default function NutritionPage() {
 
   useEffect(() => {
     void refresh();
-  }, []);
+  }, [loggedDate]);
 
   useEffect(() => {
     const trimmed = searchQuery.trim();

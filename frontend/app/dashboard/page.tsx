@@ -94,7 +94,7 @@ export default async function DashboardPage() {
          COALESCE(SUM(protein_g), 0) AS total_protein
        FROM nutrition_logs
        WHERE user_id = $1
-         AND DATE(logged_at AT TIME ZONE 'UTC') = CURRENT_DATE`,
+         AND DATE(logged_at AT TIME ZONE 'UTC') = DATE(NOW() AT TIME ZONE 'UTC')`,
       [userId]
     );
     const _caloriesToday = Number(nutritionRes.rows[0]?.total_calories ?? 0);
