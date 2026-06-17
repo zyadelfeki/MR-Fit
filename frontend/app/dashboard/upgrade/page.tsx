@@ -1,8 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Zap, Check } from "lucide-react";
-import RevealOnScroll from "@/components/RevealOnScroll";
 
 const FREE_FEATURES = [
   "Workout logging",
@@ -23,6 +23,26 @@ const PRO_FEATURES = [
 ];
 
 export default function UpgradePage() {
+  const [isPro, setIsPro] = useState(false);
+
+  useEffect(() => {
+    setIsPro(localStorage.getItem("mrfit_pro") === "true");
+  }, []);
+
+  const handleUpgrade = () => {
+    localStorage.setItem("mrfit_pro", "true");
+    setIsPro(true);
+    alert("Successfully upgraded to Pro! All features unlocked.");
+    window.location.href = "/dashboard";
+  };
+
+  const handleDowngrade = () => {
+    localStorage.removeItem("mrfit_pro");
+    setIsPro(false);
+    alert("Reverted back to the Free plan.");
+    window.location.href = "/dashboard";
+  };
+
   return (
     <div className="mx-auto max-w-3xl py-10 px-4">
       <div className="mb-10 text-center">
@@ -38,7 +58,7 @@ export default function UpgradePage() {
           <div>
             <div className="mb-4">
               <span className="rounded-full bg-neutral-900 border border-neutral-850 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-                Current plan
+                {!isPro ? "Current plan" : "Basic plan"}
               </span>
             </div>
             <h2 className="text-2xl font-bold text-white font-heading">Free</h2>
@@ -59,12 +79,21 @@ export default function UpgradePage() {
           </div>
 
           <div className="mt-8">
-            <Link
-              href="/dashboard"
-              className="flex w-full items-center justify-center rounded-xl border border-neutral-850 bg-neutral-900 px-4 py-3 text-sm font-semibold text-neutral-305 transition hover:bg-neutral-850"
-            >
-              You&apos;re on this plan
-            </Link>
+            {isPro ? (
+              <button
+                onClick={handleDowngrade}
+                className="flex w-full items-center justify-center rounded-xl border border-red-500/35 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-400 transition hover:bg-red-500/20"
+              >
+                Downgrade to Free
+              </button>
+            ) : (
+              <Link
+                href="/dashboard"
+                className="flex w-full items-center justify-center rounded-xl border border-neutral-850 bg-neutral-900 px-4 py-3 text-sm font-semibold text-neutral-305 transition hover:bg-neutral-850"
+              >
+                You&apos;re on this plan
+              </Link>
+            )}
           </div>
         </div>
 
@@ -101,12 +130,21 @@ export default function UpgradePage() {
           </div>
 
           <div className="mt-8">
-            <button
-              className="flex w-full items-center justify-center rounded-xl bg-[#FFB800] px-4 py-3 text-sm font-bold text-black transition hover:bg-[#e0a200] hover:shadow-[0_0_15px_rgba(255,184,0,0.25)]"
-              onClick={() => alert("Payment integration coming soon!")}
-            >
-              Upgrade to Pro
-            </button>
+            {isPro ? (
+              <Link
+                href="/dashboard"
+                className="flex w-full items-center justify-center rounded-xl border border-neutral-850 bg-neutral-900 px-4 py-3 text-sm font-semibold text-neutral-305 transition hover:bg-neutral-850"
+              >
+                You&apos;re on this plan
+              </Link>
+            ) : (
+              <button
+                onClick={handleUpgrade}
+                className="flex w-full items-center justify-center rounded-xl bg-[#FFB800] px-4 py-3 text-sm font-bold text-black transition hover:bg-[#e0a200] hover:shadow-[0_0_15px_rgba(255,184,0,0.25)]"
+              >
+                Upgrade to Pro
+              </button>
+            )}
           </div>
         </div>
       </div>

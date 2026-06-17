@@ -115,9 +115,18 @@ const navItems: NavItem[] = [
 // ─── plan helpers (swap this for a real DB field later) ───────────────────
 type Plan = "free" | "pro";
 function usePlan(): Plan {
-  // TODO: read from session or /api/profile when you add billing
-  return "free";
+  const [plan, setPlan] = useState<Plan>("free");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("mrfit_pro") === "true";
+    if (saved) {
+      setPlan("pro");
+    }
+  }, []);
+
+  return plan;
 }
+
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname  = usePathname();
