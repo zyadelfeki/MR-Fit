@@ -78,6 +78,13 @@ export default function NutritionPage() {
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null); // base64 data URL
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    if (cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+    }
+  }, [cameraStream]);
 
   const startCamera = async () => {
     setScannerOpen(true);
@@ -89,8 +96,6 @@ export default function NutritionPage() {
           video: { facingMode: "environment" },
         });
         setCameraStream(stream);
-        const videoEl = document.getElementById("scanner-video") as HTMLVideoElement;
-        if (videoEl) videoEl.srcObject = stream;
       } catch (e) {
         console.warn("Webcam access not granted.");
       }
@@ -128,7 +133,7 @@ export default function NutritionPage() {
 
   /** Capture current video frame as base64 using an off-screen canvas */
   const captureFrameBase64 = (): string | null => {
-    const video = document.getElementById("scanner-video") as HTMLVideoElement | null;
+    const video = videoRef.current;
     if (!video || video.readyState < 2) return null;
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth || 640;
@@ -734,6 +739,7 @@ export default function NutritionPage() {
                   />
                 ) : cameraStream ? (
                   <video
+                    ref={videoRef}
                     id="scanner-video"
                     autoPlay
                     playsInline
@@ -773,16 +779,14 @@ export default function NutritionPage() {
                         setScanResult(null);
                         setUploadedImage(null);
                         setTimeout(async () => {
-                          try {
-                            const stream = await navigator.mediaDevices.getUserMedia({
-                              video: { facingMode: "environment" },
-                            });
-                            setCameraStream(stream);
-                            const videoEl = document.getElementById("scanner-video") as HTMLVideoElement;
-                            if (videoEl) videoEl.srcObject = stream;
-                          } catch {
-                            showToast("Camera access denied", "error");
-                          }
+                           try {
+                             const stream = await navigator.mediaDevices.getUserMedia({
+                               video: { facingMode: "environment" },
+                             });
+                             setCameraStream(stream);
+                           } catch {
+                             showToast("Camera access denied", "error");
+                           }
                         }, 50);
                       }}
                       className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-neutral-700 bg-neutral-900 py-2 text-xs font-semibold text-neutral-300 hover:border-amber-500/50 hover:text-white transition-colors"

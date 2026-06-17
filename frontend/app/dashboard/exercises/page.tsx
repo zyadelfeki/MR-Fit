@@ -1,8 +1,8 @@
 "use client";
-
+ 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, Brain, Award, Dumbbell, AlertCircle, ChevronRight } from "lucide-react";
+import { Search, Award, Dumbbell, AlertCircle, ChevronRight, X } from "lucide-react";
 import RevealOnScroll from "@/components/RevealOnScroll";
 
 type ExerciseResult = {
@@ -39,6 +39,7 @@ export default function ExercisesPage() {
     const [activeMuscle, setActiveMuscle] = useState<(typeof MUSCLE_FILTERS)[number]>("All");
     const [results, setResults] = useState<ExerciseResult[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedExercise, setSelectedExercise] = useState<ExerciseResult | null>(null);
 
     const debouncedQuery = useMemo(() => query.trim(), [query]);
 
@@ -65,7 +66,7 @@ export default function ExercisesPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white font-heading">Exercise Library</h1>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-450">
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-455">
                         Browse and search 800+ exercises filtered by muscle group
                     </p>
                 </div>
@@ -108,7 +109,7 @@ export default function ExercisesPage() {
             {loading ? (
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
                     {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="h-44 animate-pulse rounded-2xl border border-neutral-850 bg-neutral-900" />
+                        <div key={i} className="h-44 animate-pulse rounded-2xl border border-neutral-855 bg-neutral-900" />
                     ))}
                 </div>
             ) : results.length === 0 ? (
@@ -123,9 +124,11 @@ export default function ExercisesPage() {
             ) : (
                 <RevealOnScroll className="grid grid-cols-2 gap-4 md:grid-cols-3">
                     {results.map((exercise) => (
-                        <article key={`${exercise.id}-${exercise.name}`}
-                            className="relative flex h-full flex-col rounded-2xl border border-neutral-850 bg-[#161616] p-5 hover:border-neutral-700 transition-all hover:scale-[1.02] justify-between">
-
+                        <article
+                            key={`${exercise.id}-${exercise.name}`}
+                            onClick={() => setSelectedExercise(exercise)}
+                            className="relative flex h-full flex-col rounded-2xl border border-neutral-850 bg-[#161616] p-5 hover:border-neutral-750 transition-all hover:scale-[1.02] justify-between cursor-pointer"
+                        >
                             <div>
                                 <div className="flex items-start justify-between gap-3 mb-2">
                                     <h2 className="text-sm font-bold text-white leading-snug">
@@ -149,7 +152,7 @@ export default function ExercisesPage() {
                                             </span>
                                         ))
                                     ) : (
-                                        <span className="rounded-md bg-neutral-900 border border-neutral-850 px-2 py-0.5 text-[9px] text-neutral-505">No equipment</span>
+                                        <span className="rounded-md bg-neutral-900 border border-neutral-850 px-2 py-0.5 text-[9px] text-neutral-500">No equipment</span>
                                     )}
                                 </div>
 
@@ -158,13 +161,73 @@ export default function ExercisesPage() {
                                 </p>
                             </div>
 
-                            <span className="mt-4 text-xs font-bold text-[#FFB800] hover:underline cursor-pointer flex items-center gap-0.5 self-start">
+                            <span className="mt-4 text-xs font-bold text-[#FFB800] hover:underline flex items-center gap-0.5 self-start">
                                 <span>View details</span>
                                 <ChevronRight className="h-3 w-3" />
                             </span>
                         </article>
                     ))}
                 </RevealOnScroll>
+            )}
+
+            {/* Premium Details Modal */}
+            {selectedExercise && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-xs animate-fade-in"
+                    onClick={() => setSelectedExercise(null)}
+                >
+                    <div
+                        className="w-full max-w-2xl rounded-3xl border border-neutral-800 bg-[#161616] p-6 md:p-8 shadow-2xl space-y-6 relative animate-in fade-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Close button */}
+                        <button
+                            onClick={() => setSelectedExercise(null)}
+                            className="absolute top-4 right-4 h-8 w-8 flex items-center justify-center rounded-xl bg-neutral-900 border border-neutral-800 hover:bg-neutral-850 text-neutral-400 hover:text-white transition"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+
+                        <div className="space-y-3">
+                            <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold ${categoryBadge(selectedExercise.category)}`}>
+                                {selectedExercise.category}
+                            </span>
+                            <h2 className="text-xl md:text-2xl font-bold text-white leading-tight">
+                                {selectedExercise.name}
+                            </h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-neutral-950 border border-neutral-850 rounded-2xl p-4 text-xs">
+                            <div className="space-y-1">
+                                <span className="text-neutral-500 uppercase tracking-wider font-semibold block text-[10px]">Primary Target</span>
+                                <span className="text-neutral-200 font-bold">
+                                    {selectedExercise.muscles.length > 0 ? selectedExercise.muscles.join(", ") : "None specified"}
+                                </span>
+                            </div>
+                            {selectedExercise.musclesSecondary && selectedExercise.musclesSecondary.length > 0 && (
+                                <div className="space-y-1">
+                                    <span className="text-neutral-500 uppercase tracking-wider font-semibold block text-[10px]">Secondary Targets</span>
+                                    <span className="text-neutral-300 font-semibold">
+                                        {selectedExercise.musclesSecondary.join(", ")}
+                                    </span>
+                                </div>
+                            )}
+                            <div className="space-y-1 col-span-1 sm:col-span-2 border-t border-neutral-900 pt-3">
+                                <span className="text-neutral-500 uppercase tracking-wider font-semibold block text-[10px]">Equipment Required</span>
+                                <span className="text-neutral-200 font-bold">
+                                    {selectedExercise.equipment.length > 0 ? selectedExercise.equipment.join(", ") : "No equipment required"}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <h4 className="text-xs font-bold text-[#FFB800] uppercase tracking-wider">Instructions & Context</h4>
+                            <p className="text-xs md:text-sm text-neutral-350 leading-relaxed max-h-60 overflow-y-auto pr-2">
+                                {selectedExercise.description || "No description available for this exercise."}
+                            </p>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

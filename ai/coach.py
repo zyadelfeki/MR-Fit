@@ -205,6 +205,10 @@ async def recommend(req: RecommendRequest):
     recent_workouts_str = "No recent workouts found."
     matched_exercises = []
     wearable_context = ""
+    weight_history_str = "No weight history found."
+    nutrition_history_str = "No recent nutrition logs found."
+    completed_workouts_str = "No completed workouts found."
+    other_wearable_str = ""
 
     db = None
     try:
@@ -222,6 +226,90 @@ async def recommend(req: RecommendRequest):
             logger.error(f"profile fetch skipped: {e}")
             db.rollback()
 
+        # 1. Fetch recent weight history
+        try:
+            cur.execute("""
+                SELECT value, recorded_at
+                FROM wearable_data
+                WHERE user_id = %s::uuid AND metric = 'weight_kg'
+                ORDER BY recorded_at DESC
+                LIMIT 10
+            """, (req.user_id,))
+            weight_rows = cur.fetchall()
+            if weight_rows:
+                weight_history_str = "Weight Logs (recent):\n" + "\n".join([
+                    f"  - {row['value']} kg logged on {row['recorded_at'].strftime('%Y-%m-%d %H:%M') if hasattr(row['recorded_at'], 'strftime') else row['recorded_at']}"
+                    for row in weight_rows
+                ])
+        except Exception as e:
+            logger.error(f"weight history fetch skipped: {e}")
+            db.rollback()
+
+        # 2. Fetch daily nutrition history (last 7 days of daily summaries)
+        try:
+            cur.execute("""
+                SELECT DATE(logged_at) as log_date, 
+                       SUM(calories) as total_calories, 
+                       SUM(protein_g) as total_protein, 
+                       SUM(carbs_g) as total_carbs, 
+                       SUM(fat_g) as total_fat
+                FROM nutrition_logs
+                WHERE user_id = %s::uuid
+                GROUP BY log_date
+                ORDER BY log_date DESC
+                LIMIT 7
+            """, (req.user_id,))
+            nut_rows = cur.fetchall()
+            if nut_rows:
+                nutrition_history_str = "Nutrition Daily Summaries (last 7 days):\n" + "\n".join([
+                    f"  - {row['log_date']}: {int(row['total_calories'])} kcal (Protein: {int(row['total_protein'] or 0)}g, Carbs: {int(row['total_carbs'] or 0)}g, Fat: {int(row['total_fat'] or 0)}g)"
+                    for row in nut_rows
+                ])
+        except Exception as e:
+            logger.error(f"nutrition logs fetch skipped: {e}")
+            db.rollback()
+
+        # 3. Fetch completed workouts history (recent 5 workouts with details)
+        try:
+            cur.execute("""
+                SELECT id, title, duration_min, COALESCE(scheduled_at, created_at) as workout_date, source
+                FROM workouts
+                WHERE user_id = %s::uuid
+                ORDER BY workout_date DESC
+                LIMIT 5
+            """, (req.user_id,))
+            workout_sessions = cur.fetchall()
+            
+            if workout_sessions:
+                workout_list = []
+                for w in workout_sessions:
+                    cur.execute("""
+                        SELECT e.name, we.sets_target, we.reps_target, we.weight_kg
+                        FROM workout_exercises we
+                        LEFT JOIN exercises e ON we.exercise_id = e.id
+                        WHERE we.workout_id = %s::uuid
+                        ORDER BY we.order_index ASC
+                    """, (w["id"],))
+                    ex_rows = cur.fetchall()
+                    
+                    ex_details = []
+                    for ex in ex_rows:
+                        ex_details.append(
+                            f"    * {ex['name']}: {ex['sets_target']}x{ex['reps_target']} "
+                            f"@ {ex['weight_kg'] or 'bodyweight'}kg"
+                        )
+                    
+                    w_date_str = w['workout_date'].strftime('%Y-%m-%d') if hasattr(w['workout_date'], 'strftime') else str(w['workout_date'])
+                    workout_list.append(
+                        f"  - {w['title']} ({w['source']}) on {w_date_str} "
+                        f"({w['duration_min'] or 'N/A'} min):\n" + 
+                        ("\n".join(ex_details) if ex_details else "    * No exercises logged.")
+                    )
+                completed_workouts_str = "Completed Workouts History (recent):\n" + "\n".join(workout_list)
+        except Exception as e:
+            logger.error(f"workout sessions details fetch skipped: {e}")
+            db.rollback()
+
         try:
             cur.execute("""
                 SELECT wl.sets_completed, wl.reps_completed, wl.weight_kg, wl.logged_at, e.name as exercise_name
@@ -233,7 +321,7 @@ async def recommend(req: RecommendRequest):
             """, (req.user_id,))
             logs = cur.fetchall()
             if logs:
-                recent_workouts_str = "Recent Workouts:\n" + "\n".join([
+                recent_workouts_str = "Recent Exercise Set Logs:\n" + "\n".join([
                     f"- {log['exercise_name'] or 'Unknown'}: "
                     f"{log['sets_completed']}x{log['reps_completed']} "
                     f"@ {log['weight_kg'] or 'bodyweight'}kg"
@@ -261,6 +349,25 @@ async def recommend(req: RecommendRequest):
             logger.error(f"pgvector search skipped: {e}")
             db.rollback()
 
+        # 4. Fetch other wearable metrics
+        try:
+            cur.execute("""
+                SELECT metric, value, unit, recorded_at
+                FROM wearable_data
+                WHERE user_id = %s::uuid AND metric != 'weight_kg'
+                ORDER BY recorded_at DESC
+                LIMIT 15
+            """, (req.user_id,))
+            wearable_data_rows = cur.fetchall()
+            if wearable_data_rows:
+                other_wearable_str = "Other Wearable Metric History:\n" + "\n".join([
+                    f"  - {row['metric']}: {row['value']} {row['unit'] or ''} on {row['recorded_at'].strftime('%Y-%m-%d %H:%M') if hasattr(row['recorded_at'], 'strftime') else row['recorded_at']}"
+                    for row in wearable_data_rows
+                ])
+        except Exception as e:
+            logger.error(f"other wearable metrics fetch skipped: {e}")
+            db.rollback()
+
         # Pull wearable context
         wearable_context = _build_wearable_context(req.user_id, db)
 
@@ -281,8 +388,16 @@ Goal: {profile.get('fitness_goal', 'Not specified')}
 Level: {profile.get('fitness_level', 'Not specified')}
 Current Weight: {profile.get('weight_kg', 'Unknown')}kg
 
+{weight_history_str}
+
+{nutrition_history_str}
+
+{completed_workouts_str}
+
 {recent_workouts_str}
+
 {wearable_context}
+{other_wearable_str}
 
 Relevant Exercises from database:
 {exercises_text}"""
@@ -299,7 +414,7 @@ Relevant Exercises from database:
                     if m.role == "system":
                         continue
                     history_list.append({
-                        "role": "coach" if m.role in ("ai", "assistant") else "user",
+                        "role": "coach" if m.role in ("ai", "assistant", "coach") else "user",
                         "text": m.content
                     })
             
@@ -323,14 +438,31 @@ Relevant Exercises from database:
 
     # Ollama Fallback
     logger.info("Generating coach advice using local Ollama fallback...")
+    
+    system_content = SYSTEM_PROMPT
+    nextjs_system = None
+    if req.messages:
+        for m in req.messages:
+            if m.role == "system":
+                nextjs_system = m.content
+                break
+                
+    if nextjs_system:
+        system_content = nextjs_system + "\n\n" + context_str
+    else:
+        system_content = SYSTEM_PROMPT + "\n\n" + context_str
+
     ollama_messages = [
-        {"role": "system", "content": SYSTEM_PROMPT + "\n\n" + context_str}
+        {"role": "system", "content": system_content}
     ]
 
     if req.messages:
         for m in req.messages:
-            role = "assistant" if m.role in ("ai", "assistant") else "user"
-            if role == "assistant" and "MR-Fit AI Coach" in m.content:
+            if m.role == "system":
+                continue
+            role = "assistant" if m.role in ("ai", "assistant", "coach") else "user"
+            # Avoid duplicate welcome message in system prompt
+            if role == "assistant" and "MR-Fit AI Coach" in m.content and len(ollama_messages) == 1:
                 continue
             ollama_messages.append({"role": role, "content": m.content})
     else:
