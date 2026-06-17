@@ -55,6 +55,7 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS protein_goal         integer DEFAU
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS carb_goal            integer DEFAULT 250;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS fat_goal             integer DEFAULT 65;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS onboarding_completed boolean DEFAULT false;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_url           text;
 
 -- ============================================================
 -- Exercises (embedding column only created if pgvector loaded)
@@ -157,11 +158,14 @@ CREATE TABLE IF NOT EXISTS weight_logs (
 CREATE TABLE IF NOT EXISTS wearable_data (
   id          uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id     uuid REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  source      text NOT NULL DEFAULT 'unknown',
   metric      text NOT NULL,
   value       numeric NOT NULL,
   unit        text,
   recorded_at timestamptz DEFAULT now()
 );
+
+ALTER TABLE wearable_data ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'unknown';
 
 -- ============================================================
 -- Chat history (AI coach)
