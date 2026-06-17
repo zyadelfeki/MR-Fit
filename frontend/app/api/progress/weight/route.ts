@@ -4,7 +4,8 @@ import { withDb } from "@/lib/db";
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = session?.user?.id;
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const body = (await req.json()) as { weight_kg?: number | string; recorded_at?: string };
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
         `INSERT INTO wearable_data (user_id, source, metric, value, unit, recorded_at)
          VALUES ($1, 'manual', 'weight_kg', $2, 'kg', COALESCE($3::timestamptz, NOW()))
          RETURNING id, value, unit, recorded_at`,
-        [session.user.id, parsedWeight, body.recorded_at ?? null]
+        [userId, parsedWeight, body.recorded_at ?? null]
       );
       return result.rows[0];
     });

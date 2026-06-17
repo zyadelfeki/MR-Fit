@@ -8,7 +8,8 @@ export async function GET(
     { params }: { params: { id: string } }
 ) {
     const session = await auth();
-    if (!session?.user?.id) {
+    const userId = session?.user?.id;
+    if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -22,7 +23,7 @@ export async function GET(
                 `SELECT id, title, duration_min, scheduled_at, source
                  FROM workouts
                  WHERE id = $1 AND user_id = $2`,
-                [id, session.user.id]
+                [id, userId]
             );
 
             if (workoutRes.rows.length === 0) {
@@ -72,7 +73,8 @@ export async function DELETE(
     { params }: { params: { id: string } }
 ) {
     const session = await auth();
-    if (!session?.user?.id) {
+    const userId = session?.user?.id;
+    if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -82,7 +84,7 @@ export async function DELETE(
         await withDb(async (client) => {
             await client.query(
                 "DELETE FROM workouts WHERE id = $1 AND user_id = $2",
-                [id, session.user.id]
+                [id, userId]
             );
         });
 

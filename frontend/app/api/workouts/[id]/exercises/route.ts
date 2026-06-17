@@ -6,7 +6,8 @@ type Params = { params: { id: string } };
 
 export async function GET(_req: Request, { params }: Params) {
   const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = session?.user?.id;
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const workoutId = params.id;
@@ -26,7 +27,7 @@ export async function GET(_req: Request, { params }: Params) {
          JOIN exercises e ON e.id = wl.exercise_id
          WHERE wl.workout_id = $1 AND wl.user_id = $2
          ORDER BY wl.logged_at DESC`,
-        [workoutId, session.user.id]
+        [workoutId, userId]
       );
       return res.rows;
     });
@@ -40,7 +41,8 @@ export async function GET(_req: Request, { params }: Params) {
 
 export async function POST(req: Request, { params }: Params) {
   const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = session?.user?.id;
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const workoutId = params.id;
@@ -65,7 +67,7 @@ export async function POST(req: Request, { params }: Params) {
     const result = await withDb(async (client) => {
       const workoutRes = await client.query(
         `SELECT id FROM workouts WHERE id = $1 AND user_id = $2 LIMIT 1`,
-        [workoutId, session.user.id]
+        [workoutId, userId]
       );
 
       if (workoutRes.rowCount === 0) {
@@ -96,7 +98,7 @@ export async function POST(req: Request, { params }: Params) {
               (user_id, workout_id, exercise_id, sets_completed, reps_completed, weight_kg, notes, logged_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
            RETURNING id, logged_at`,
-          [session.user.id, workoutId, exerciseId, sets, reps, weightKg, notes]
+          [userId, workoutId, exerciseId, sets, reps, weightKg, notes]
         );
 
         await client.query("COMMIT");

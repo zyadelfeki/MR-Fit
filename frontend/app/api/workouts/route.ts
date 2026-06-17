@@ -5,7 +5,8 @@ import { withDb } from "@/lib/db";
 // GET /api/workouts — list all workouts for the current user
 export async function GET() {
     const session = await auth();
-    if (!session?.user?.id) {
+    const userId = session?.user?.id;
+    if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -16,7 +17,7 @@ export async function GET() {
                  FROM workouts
                  WHERE user_id = $1
                  ORDER BY scheduled_at DESC NULLS LAST, created_at DESC`,
-                [session.user.id]
+                [userId]
             );
             return res.rows;
         });
@@ -31,7 +32,8 @@ export async function GET() {
 // POST /api/workouts — create a new workout
 export async function POST(req: Request) {
     const session = await auth();
-    if (!session?.user?.id) {
+    const userId = session?.user?.id;
+    if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -48,7 +50,7 @@ export async function POST(req: Request) {
                  VALUES ($1, $2, $3, $4, $5)
                  RETURNING id`,
                 [
-                    session.user.id,
+                    userId,
                     title,
                     scheduled_at ? new Date(scheduled_at).toISOString() : null,
                     duration_min ? Number(duration_min) : null,

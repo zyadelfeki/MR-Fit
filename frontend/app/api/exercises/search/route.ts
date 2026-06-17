@@ -39,9 +39,13 @@ export async function GET(req: Request) {
                       )
                   );
 
-        return NextResponse.json({ exercises: filteredExercises });
+        if (filteredExercises.length > 0) {
+            return NextResponse.json({ exercises: filteredExercises });
+        }
+        
+        throw new Error("No external results");
     } catch (error) {
-        console.error("GET /api/exercises/search external error:", error);
+        console.error("GET /api/exercises/search external error or empty, falling back:", error);
 
         try {
             const qParam = `%${q || ""}%`;
@@ -52,7 +56,7 @@ export async function GET(req: Request) {
                  WHERE ($1 = '%%' OR name ILIKE $1)
                    AND ($2 = '' OR $2 = 'All' OR muscle_group ILIKE $3)
                  ORDER BY name ASC
-                                 LIMIT 10`,
+                 LIMIT 20`,
                 [qParam, muscle, `%${muscle}%`]
             );
 
