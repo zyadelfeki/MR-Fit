@@ -20,15 +20,15 @@ netstat -ano | findstr "0.0.0.0:5432 127.0.0.1:5432 [::]:5432" >nul 2>&1
 if %errorlevel% equ 0 (
     echo [0/4] Native PostgreSQL detected on port 5432. Skipping WSL2 database and relay.
 ) else (
-    :: --- Ensure WSL PostgreSQL database is running ---
+    rem --- Ensure WSL PostgreSQL database is running ---
     echo [0/4] Ensuring PostgreSQL database is active in WSL...
     wsl -d Ubuntu -u root service postgresql start
 
-    :: --- Start PostgreSQL relay (bridges WSL2 PostgreSQL to Windows localhost:5432) ---
+    rem --- Start PostgreSQL relay (bridges WSL2 PostgreSQL to Windows localhost:5432) ---
     echo [1/4] Starting PostgreSQL relay (WSL2 bridge)...
     start "MR-Fit PG Relay" powershell -NoExit -Command "cd '%ROOT%'; Write-Host '=== MR-Fit PG Relay ===' -ForegroundColor Yellow; node pg-proxy.js"
 
-    :: --- Wait 3 seconds for relay to bind ---
+    rem --- Wait 3 seconds for relay to bind ---
     timeout /t 3 /nobreak >nul
 )
 
