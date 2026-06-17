@@ -110,6 +110,7 @@ const navItems: NavItem[] = [
   { name: "Recovery Engine", href: "/dashboard/recovery",    iconKey: "recovery", badge: "AI" },
   { name: "Wearables",     href: "/dashboard/wearables",     iconKey: "wearables", proOnly: true },
   { name: "Profile",       href: "/dashboard/profile",       iconKey: "profile" },
+  { name: "Membership Plan", href: "/dashboard/upgrade",     iconKey: "upgrade" },
 ];
 
 // ─── plan helpers (swap this for a real DB field later) ───────────────────
@@ -217,8 +218,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="flex h-full flex-col bg-white dark:bg-gray-900">
       {/* Brand */}
       <div className="flex h-16 items-center border-b border-gray-200 px-5 dark:border-gray-700">
-        <div className="inline-flex rounded-lg bg-gray-950 px-2.5 py-1.5 dark:bg-transparent dark:px-0 dark:py-0">
-          <Logo variant="full" height={24} />
+        <div className="inline-flex rounded-lg bg-transparent px-0 py-0">
+          <Logo variant="full" height={40} />
         </div>
       </div>
 
@@ -367,8 +368,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Mobile header */}
         <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 dark:border-gray-700 dark:bg-gray-900 md:hidden">
           <div className="flex items-center">
-            <div className="inline-flex rounded-lg bg-gray-950 px-2 py-1 dark:bg-transparent dark:px-0 dark:py-0">
-              <Logo variant="full" height={22} />
+            <div className="inline-flex rounded-lg bg-transparent px-0 py-0">
+              <Logo variant="full" height={32} />
             </div>
           </div>
           <button onClick={() => setIsMobileMenuOpen(true)} className="rounded-md p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Open menu">
