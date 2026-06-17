@@ -257,56 +257,32 @@ export default function AICoachPage() {
     enqueuePersistence("user", text);
 
     try {
-      const response = await fetch("/api/chat-history/stream", {
+      const mappedHistory = messages.map(m => ({
+        role: m.role === "ai" ? "assistant" as const : "user" as const,
+        content: m.text
+      }));
+
+      const response = await fetch("/api/ai-coach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, messages: mappedHistory }),
       });
 
       if (!response.ok) throw new Error();
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let replyText = "";
-      const aiMsgId = "ai-" + Date.now();
+      const data = await response.json();
+      const replyText = data.reply || "";
+      const exercises = data.exercises || [];
 
+      const aiMsgId = "ai-" + Date.now();
       const aiMsgPlaceholder: Message = {
         id: aiMsgId,
         role: "ai",
-        text: "",
+        text: replyText,
+        exercises: exercises,
       };
       setMessages((prev) => [...prev, aiMsgPlaceholder]);
-
-      while (true) {
-        const chunkResult = await reader?.read();
-        if (!chunkResult) break;
-        const { done, value } = chunkResult;
-        if (done) break;
-
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n");
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const dataStr = line.slice(6);
-            if (dataStr === "[DONE]") break;
-            try {
-              const dataObj = JSON.parse(dataStr);
-              if (dataObj.content) {
-                replyText += dataObj.content;
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === aiMsgId ? { ...msg, text: replyText } : msg
-                  )
-                );
-              }
-            } catch {
-              // ignore json parse errors in raw stream lines
-            }
-          }
-        }
-      }
-
+      setTypingTargetId(aiMsgId);
       enqueuePersistence("assistant", replyText);
 
     } catch {
