@@ -198,6 +198,14 @@ async def parse_entry(req: ParseEntryRequest):
         logger.error(f"All parsing engines failed: {e}")
         raise HTTPException(status_code=502, detail=f"Failed to parse entry: {e}")
 
+def strip_thinking_tags(text: str) -> str:
+    import re
+    # Remove anything between <think> and </think> (non-greedy, dotall to match newlines)
+    text = re.sub(r'<think>[\s\S]*?</think>', '', text)
+    # Also remove any stray </think> or <think> if the model didn't close/open them properly
+    text = text.replace('<think>', '').replace('</think>', '')
+    return text.strip()
+
 @app.post("/recommend")
 async def recommend(req: RecommendRequest):
     user_message_text = req.message
@@ -411,8 +419,9 @@ Current Weight: {profile.get('weight_kg', 'Unknown')}kg
 Relevant Exercises from database:
 {exercises_text}"""
 
-    # If Gemini is available, use it!
-    if gemini_service.is_gemini_available():
+    # For user request, force local Ollama for coach recommendations
+    # If Gemini fallback is ever needed, it's bypassed here to make sure Ollama handles coach responses.
+    if False and gemini_service.is_gemini_available():
         try:
             logger.info("Generating coach advice using Gemini 2.5 Flash...")
             
@@ -445,8 +454,8 @@ Relevant Exercises from database:
         except Exception as e:
             logger.error(f"Gemini recommendation failed, falling back to Ollama: {e}")
 
-    # Ollama Fallback
-    logger.info("Generating coach advice using local Ollama fallback...")
+    # Ollama recommendation
+    logger.info("Generating coach advice using local Ollama model...")
     
     system_content = SYSTEM_PROMPT
     nextjs_system = None
@@ -470,8 +479,8 @@ Relevant Exercises from database:
             if m.role == "system":
                 continue
             role = "assistant" if m.role in ("ai", "assistant", "coach") else "user"
-            # Avoid duplicate welcome message in system prompt
-            if role == "assistant" and "MR-Fit AI Coach" in m.content and len(ollama_messages) == 1:
+            # Avoid duplicate welcome message in system prompt (handles both dot and dash naming)
+            if role == "assistant" and ("MR-Fit" in m.content or "MR.FIT" in m.content) and "AI Coach" in m.content and len(ollama_messages) == 1:
                 continue
             ollama_messages.append({"role": role, "content": m.content})
     else:
@@ -494,7 +503,8 @@ Relevant Exercises from database:
             )
             res.raise_for_status()
             data = res.json()
-            reply_text = data["message"]["content"]
+            raw_reply = data["message"]["content"]
+            reply_text = strip_thinking_tags(raw_reply)
     except Exception as e:
         logger.error(f"Ollama error: {e}")
         raise HTTPException(status_code=502, detail=f"Ollama recommendation failed: {e}")
