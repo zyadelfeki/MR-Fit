@@ -100,12 +100,23 @@ export async function searchExercises(
         return mapped.slice(0, 20);
     }
 
+    const MUSCLE_MAPPING: Record<string, string[]> = {
+        legs: ["quadriceps", "hamstrings", "glutes", "calves", "legs", "femoris", "gastrocnemius", "soleus", "thigh"],
+        arms: ["biceps", "triceps", "forearms", "brachialis", "arms"],
+        core: ["core", "abs", "rectus abdominis", "obliques", "abdominals"],
+        back: ["back", "latissimus", "lats", "trapezius", "traps", "rhomboids", "erector spinae"],
+        chest: ["chest", "pectoralis", "pecs"],
+        shoulders: ["shoulders", "deltoid", "delts"],
+    };
+
     const normalizedMuscle = muscleFilter.toLowerCase();
+    const mappedTerms = MUSCLE_MAPPING[normalizedMuscle] || [normalizedMuscle];
 
     const filtered = mapped.filter((exercise) =>
-        exercise.muscles.some((muscleName) =>
-            muscleName.toLowerCase().includes(normalizedMuscle)
-        )
+        exercise.muscles.some((muscleName) => {
+            const normName = muscleName.toLowerCase();
+            return mappedTerms.some(term => normName.includes(term));
+        })
     );
 
     return filtered.slice(0, 20);

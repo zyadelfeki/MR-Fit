@@ -4,6 +4,7 @@ import pool from "@/lib/db";
 import Link from "next/link";
 import { Calendar, Clock, Dumbbell, ClipboardList, Plus, ChevronRight } from "lucide-react";
 import RevealOnScroll from "@/components/RevealOnScroll";
+import DeleteWorkoutButton from "@/components/DeleteWorkoutButton";
 
 export const metadata = {
   title: "My Workouts | MR-Fit",
@@ -112,12 +113,17 @@ export default async function WorkoutsPage() {
               <div key={workout.id}
                 className="bg-[#161616] rounded-xl border border-neutral-800 p-5 hover:border-neutral-700 transition-all hover:scale-[1.02] flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-base font-semibold text-white leading-snug">
-                    {workout.title}
-                  </h3>
-                  <span className={`flex-shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full ${typeBadgeClass[workoutType]}`}>
-                    {workoutType}
-                  </span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-semibold text-white leading-snug truncate" title={workout.title}>
+                      {workout.title}
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${typeBadgeClass[workoutType]}`}>
+                      {workoutType}
+                    </span>
+                    <DeleteWorkoutButton workoutId={workout.id} workoutTitle={workout.title} />
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-4 text-xs text-neutral-400">

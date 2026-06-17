@@ -26,17 +26,29 @@ export async function GET(req: Request) {
     const q = searchParams.get("q")?.trim() ?? "";
     const muscle = searchParams.get("muscle")?.trim() ?? "";
 
+    const MUSCLE_MAPPING: Record<string, string[]> = {
+        legs: ["quadriceps", "hamstrings", "glutes", "calves", "legs", "femoris", "gastrocnemius", "soleus", "thigh"],
+        arms: ["biceps", "triceps", "forearms", "brachialis", "arms"],
+        core: ["core", "abs", "rectus abdominis", "obliques", "abdominals"],
+        back: ["back", "latissimus", "lats", "trapezius", "traps", "rhomboids", "erector spinae"],
+        chest: ["chest", "pectoralis", "pecs"],
+        shoulders: ["shoulders", "deltoid", "delts"],
+    };
+
+    const normalizedMuscle = muscle.toLowerCase();
+    const mappedTerms = MUSCLE_MAPPING[normalizedMuscle] || [normalizedMuscle];
+
     try {
         const exercises = await searchExercises(q, muscle);
 
-        const normalizedMuscle = muscle.toLowerCase();
         const filteredExercises =
             !normalizedMuscle || normalizedMuscle === "all"
                 ? exercises
                 : exercises.filter((exercise) =>
-                      exercise.muscles.some((muscleName) =>
-                          muscleName.toLowerCase().includes(normalizedMuscle)
-                      )
+                      exercise.muscles.some((muscleName) => {
+                          const normName = muscleName.toLowerCase();
+                          return mappedTerms.some(term => normName.includes(term));
+                      })
                   );
 
         if (filteredExercises.length > 0) {
@@ -54,10 +66,10 @@ export async function GET(req: Request) {
                 `SELECT id, name, muscle_group, equipment
                  FROM exercises
                  WHERE ($1 = '%%' OR name ILIKE $1)
-                   AND ($2 = '' OR $2 = 'All' OR muscle_group ILIKE $3)
+                   AND ($2 = '' OR $2 = 'All' OR LOWER(muscle_group) = ANY($3::text[]))
                  ORDER BY name ASC
                  LIMIT 20`,
-                [qParam, muscle, `%${muscle}%`]
+                [qParam, muscle, mappedTerms]
             );
 
             return NextResponse.json({
