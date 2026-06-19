@@ -3,6 +3,21 @@ import { auth } from "@/auth";
 
 const AI_COACH_API_URL = process.env.NEXT_PUBLIC_AI_COACH_API_URL ?? "http://127.0.0.1:8000";
 
+function extractJsonPayload(rawText: string) {
+    const stripped = rawText.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+    const arrayMatch = stripped.match(/\[[\s\S]*\]/);
+    if (arrayMatch) {
+        return arrayMatch[0];
+    }
+
+    const objectMatch = stripped.match(/\{[\s\S]*\}/);
+    if (objectMatch) {
+        return objectMatch[0];
+    }
+
+    return stripped;
+}
+
 export async function POST(req: NextRequest) {
     try {
         const session = await auth();
@@ -35,8 +50,14 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Parser microservice returned an error" }, { status: 502 });
         }
 
-        const data = await res.json();
-        return NextResponse.json(data);
+        const rawText = await res.text();
+        try {
+            const data = JSON.parse(extractJsonPayload(rawText));
+            return NextResponse.json(data);
+        } catch (parseErr) {
+            console.error("Failed to parse AI response:", rawText, parseErr);
+            return NextResponse.json({ error: "Parser microservice returned an invalid response" }, { status: 502 });
+        }
     } catch (err: any) {
         console.error("POST /api/smart-tracker/parse-entry error:", err);
         return NextResponse.json({ error: "Failed to connect to parser microservice" }, { status: 503 });

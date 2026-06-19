@@ -11,14 +11,20 @@ from dotenv import load_dotenv
 import json
 import logging
 
+try:
+    from .model_io import load_json_payload, normalize_parsed_items
+    from . import gemini_service
+    from .wearables import router as wearables_router
+except ImportError:
+    from model_io import load_json_payload, normalize_parsed_items
+    import gemini_service
+    from wearables import router as wearables_router
+
 load_dotenv()
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("mrfit.ai.coach")
-
-from wearables import router as wearables_router
-import gemini_service
 
 app = FastAPI()
 app.include_router(wearables_router)
@@ -142,6 +148,8 @@ Return ONLY a valid JSON list of objects:
 ]
 Rules:
 - For multi-set descriptions like "3 sets of 10", return 3 separate objects, one for each set.
+- If the user mentions a workout without explicit sets, reps, or weight, still return a best-effort EXERCISE item instead of an empty list.
+- Only return an empty list when the input is clearly unrelated to fitness or nutrition.
 - Omit markdown, return only raw JSON.
 """
     try:
@@ -158,26 +166,16 @@ Rules:
             res.raise_for_status()
             data = res.json()
             raw_text = data.get("response", "").strip()
-            data_list = json.loads(raw_text)
-            
-            if not isinstance(data_list, list):
-                data_list = [data_list]
-                
-            parsed_items = []
-            for data in data_list:
-                if "type" not in data or data["type"] not in ("EXERCISE", "NUTRITION"):
-                    continue
-                if data.get("type") == "EXERCISE":
-                    s = max(data.get("sets") or 1, 1)
-                    r = max(data.get("reps") or 0, 0)
-                    w = max(data.get("weight") or 0.0, 0.0)
-                    data["volume"] = round(s * r * w, 2)
-                else:
-                    data["volume"] = None
-                parsed_items.append(data)
+            data_list = load_json_payload(raw_text)
+            parsed_items = normalize_parsed_items(data_list, text=text, prefill_exercise=prefill_exercise)
             return parsed_items
     except Exception as e:
         logger.error(f"Ollama parse fallback failed: {e}")
+        heuristic_items = normalize_parsed_items([], text=text, prefill_exercise=prefill_exercise)
+        if heuristic_items:
+            logger.warning("Using local heuristic parse fallback because Ollama is unavailable.")
+            return heuristic_items
+
         raise RuntimeError(f"Ollama parse failed: {e}")
 
 @app.post("/parse-entry")
@@ -576,7 +574,7 @@ async def analyze_food_image_ollama_fallback(image_base64: str, mime_type: str =
                 res.raise_for_status()
                 data = res.json()
                 raw_text = data.get("response", "").strip()
-                return json.loads(raw_text)
+                return load_json_payload(raw_text)
         except Exception as e:
             logger.error(f"Ollama vision model call failed, falling back: {e}")
 
@@ -609,7 +607,7 @@ async def analyze_food_image_ollama_fallback(image_base64: str, mime_type: str =
             res.raise_for_status()
             data = res.json()
             raw_text = data.get("response", "").strip()
-            return json.loads(raw_text)
+            return load_json_payload(raw_text)
     except Exception as e:
         logger.error(f"Ollama text-only fallback failed: {e}")
 

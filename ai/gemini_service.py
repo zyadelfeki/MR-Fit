@@ -5,6 +5,11 @@ from typing import Optional, List, Dict, Any
 from google import genai
 from google.genai import types
 
+try:
+    from .model_io import load_json_payload, normalize_parsed_items
+except ImportError:
+    from model_io import load_json_payload, normalize_parsed_items
+
 logger = logging.getLogger(__name__)
 
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
@@ -39,6 +44,8 @@ Task: Extract EVERY fitness or nutrition item mentioned from the user input.
 - If it describes a workout / exercise, set type to EXERCISE and map to a standard exercise name.
 - If a Prefilled Exercise name is provided, use that as the exercise name.
 - If a user specifies multiple sets for an exercise (e.g., 'bench press 30kg for 10 and 50kg for 8' or '3 sets of 10 at 50kg'), return an array of objects, one for each individual set. For '3 sets of 10 at 50kg', return 3 objects with reps=10 and weight=50. Each object represents one set, so the 'sets' value should be 1 or omitted.
+- If the user mentions a workout without explicit sets, reps, or weight, still return a best-effort EXERCISE item instead of an empty list.
+- Only return an empty list when the input is clearly unrelated to fitness or nutrition.
 - Return ONLY a valid JSON LIST of objects (even if there is only one item) with these fields (omit fields that don't apply):
   [{{"type": "EXERCISE" | "NUTRITION", "name": "<string>", "calories": <int|null>, "sets": <int|null>, "reps": <int|null>, "weight": <float|null>}}]
 - No markdown, no explanation, just the JSON list.
@@ -51,28 +58,12 @@ Task: Extract EVERY fitness or nutrition item mentioned from the user input.
                 response_mime_type="application/json",
             )
         )
-        data_list = json.loads(response.text)
+        data_list = load_json_payload(response.text)
     except Exception as e:
         logger.error(f"Gemini parse error: {e}")
         raise RuntimeError(f"AI parse failed: {str(e)}")
 
-    if not isinstance(data_list, list):
-        data_list = [data_list]
-
-    parsed_items = []
-    for data in data_list:
-        if "type" not in data or data["type"] not in ("EXERCISE", "NUTRITION"):
-            continue
-
-        if data.get("type") == "EXERCISE":
-            s = max(data.get("sets") or 1, 1)
-            r = max(data.get("reps") or 0, 0)
-            w = max(data.get("weight") or 0.0, 0.0)
-            data["volume"] = round(s * r * w, 2)
-        else:
-            data["volume"] = None
-
-        parsed_items.append(data)
+    parsed_items = normalize_parsed_items(data_list, text=text, prefill_exercise=prefill_exercise)
 
     if not parsed_items:
         raise ValueError("AI returned unexpected format or empty list")
@@ -119,7 +110,7 @@ Guidelines:
                 response_mime_type="application/json",
             )
         )
-        result = json.loads(response.text)
+        result = load_json_payload(response.text)
     except Exception as e:
         logger.error(f"Gemini Coach advice error: {e}")
         raise RuntimeError(f"Gemini Coach advice failed: {str(e)}")
@@ -191,7 +182,7 @@ No markdown, no explanation outside the JSON.
                 response_mime_type="application/json",
             )
         )
-        result = json.loads(response.text)
+        result = load_json_payload(response.text)
     except Exception as e:
         logger.error(f"Gemini Coach chat error: {e}")
         raise RuntimeError(f"Gemini Coach chat failed: {str(e)}")
@@ -237,7 +228,7 @@ def analyze_food_image_gemini(image_bytes: bytes, mime_type: str = "image/jpeg")
                 response_mime_type="application/json",
             )
         )
-        result = json.loads(response.text)
+        result = load_json_payload(response.text)
         return result
     except Exception as e:
         logger.error(f"Gemini food image analysis error: {e}")

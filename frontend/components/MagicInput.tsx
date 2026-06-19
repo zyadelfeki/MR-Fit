@@ -104,7 +104,7 @@ export default function MagicInput() {
 
             const parsedItems = (await parseRes.json()) as ParsedItem[];
             if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
-                throw new Error("AI returned an empty list or unexpected format");
+                throw new Error("I couldn't extract a log from that. Try including an exercise name plus sets/reps/weight, or calories for food.");
             }
 
             // 2. Loop over and insert each parsed item into PostgreSQL
