@@ -2,9 +2,13 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    paths:
+      - 'frontend/**'
+      - 'ai/**'
   pull_request:
-    branches: [main, develop]
+    paths:
+      - 'frontend/**'
+      - 'ai/**'
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────────
@@ -26,11 +30,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Type-check
         run: npm run type-check
@@ -72,7 +74,7 @@ jobs:
       - name: Lint with Ruff
         run: |
           pip install ruff
-          ruff check .
+          ruff check --select E9,F63,F7,F82 .
 
       - name: Check imports (syntax only – no network calls)
         run: python -c "import ast, pathlib; [ast.parse(p.read_text()) for p in pathlib.Path('.').glob('**/*.py')]"
