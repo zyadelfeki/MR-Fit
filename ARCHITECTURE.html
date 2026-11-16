@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MR-Fit 2.0 — System Architecture &amp; Multimodal Fusion Topology</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: #020617;
+      min-height: 100vh;
+      padding: 2rem;
+      color: white;
+    }
+    .container { max-width: 1240px; margin: 0 auto; }
+    .header { margin-bottom: 1.5rem; }
+    .header-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+    .pulse-dot {
+      width: 12px; height: 12px; background: #34d399; border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.9); } }
+    h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.025em; }
+    .subtitle { color: #94a3b8; font-size: 0.85rem; margin-left: 1.75rem; }
+    .badge {
+      display: inline-block; padding: 0.2rem 0.6rem; border-radius: 9999px;
+      font-size: 0.75rem; font-weight: 600; background: rgba(52, 211, 153, 0.15);
+      color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); margin-left: 0.5rem;
+    }
+    .diagram-container {
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 1rem;
+      border: 1px solid #1e293b;
+      padding: 1.5rem;
+      overflow-x: auto;
+    }
+    svg { width: 100%; min-width: 1000px; display: block; }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    .card {
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 0.75rem;
+      border: 1px solid #1e293b;
+      padding: 1.25rem;
+    }
+    .card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .card-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .card-dot.emerald { background: #34d399; }
+    .card-dot.cyan { background: #22d3ee; }
+    .card-dot.amber { background: #fbbf24; }
+    .card-dot.rose { background: #fb7185; }
+    .card h3 { font-size: 0.85rem; font-weight: 600; }
+    .card ul { list-style: none; color: #94a3b8; font-size: 0.75rem; }
+    .card li { margin-bottom: 0.4rem; line-height: 1.4; }
+    .card li strong { color: #f1f5f9; }
+    .footer {
+      text-align: center;
+      margin-top: 1.5rem;
+      color: #475569;
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-row">
+        <div class="pulse-dot"></div>
+        <h1>MR-Fit 2.0 — Multimodal Sensor Fusion &amp; Kinematics Architecture</h1>
+        <span class="badge">ENGINEER 2 (EMBEDDED &amp; HARDWARE) SCOPE ACTIVE</span>
+      </div>
+      <p class="subtitle">Mansoura University AI Engineering Graduation Project • Asynchronous Cross-Attention Vision-Inertial Fusion</p>
+    </div>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 1100 700">
+        <defs>
+          <marker id="arrow-cyan" markerWidth="9" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 9 3, 0 6" fill="#22d3ee" />
+          </marker>
+          <marker id="arrow-emerald" markerWidth="9" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 9 3, 0 6" fill="#34d399" />
+          </marker>
+          <marker id="arrow-amber" markerWidth="9" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 9 3, 0 6" fill="#fbbf24" />
+          </marker>
+          <marker id="arrow-rose" markerWidth="9" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 9 3, 0 6" fill="#fb7185" />
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- BOUNDARY: Wearable Barbell Node (Engineer 2 Owned) -->
+        <rect x="20" y="30" width="280" height="620" rx="10" fill="rgba(6, 78, 59, 0.08)" stroke="#34d399" stroke-width="1.5" stroke-dasharray="6,3" />
+        <text x="32" y="52" fill="#34d399" font-size="10" font-weight="700">OWNED BY ZYAD (ENGINEER 2): WEARABLE NODE</text>
+
+        <!-- Hardware Sensor Block -->
+        <rect x="35" y="80" width="250" height="110" rx="6" fill="#0f172a" />
+        <rect x="35" y="80" width="250" height="110" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5" />
+        <text x="160" y="105" fill="white" font-size="11" font-weight="600" text-anchor="middle">Bosch BMI270 6-Axis IMU</text>
+        <text x="160" y="123" fill="#94a3b8" font-size="9" text-anchor="middle">400 kHz I2C Fast-Mode • 100 Hz ODR</text>
+        <text x="160" y="140" fill="#34d399" font-size="8" text-anchor="middle">Noise: 160 µg/√Hz (Hardware DLPF)</text>
+        <text x="160" y="158" fill="#fbbf24" font-size="8" text-anchor="middle">HAL Fallback: MPU-6050 compatible</text>
+        <text x="160" y="176" fill="#64748b" font-size="8" text-anchor="middle">Mounted on 50mm Olympic Barbell Sleeve</text>
+
+        <!-- Dual-Core FreeRTOS Pipeline -->
+        <rect x="35" y="220" width="250" height="160" rx="6" fill="#0f172a" />
+        <rect x="35" y="220" width="250" height="160" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5" />
+        <text x="160" y="245" fill="white" font-size="11" font-weight="600" text-anchor="middle">ESP32-S3 Dual-Core FreeRTOS</text>
+        
+        <rect x="45" y="260" width="230" height="40" rx="4" fill="rgba(15, 23, 42, 0.6)" stroke="#34d399" stroke-width="1" />
+        <text x="160" y="277" fill="#34d399" font-size="8" font-weight="600" text-anchor="middle">Core 1: Task_ImuSample (100 Hz Timer)</text>
+        <text x="160" y="291" fill="#94a3b8" font-size="8" text-anchor="middle">Madgwick AHRS (β=0.041) + 1g Removal</text>
+
+        <rect x="45" y="310" width="230" height="40" rx="4" fill="rgba(15, 23, 42, 0.6)" stroke="#22d3ee" stroke-width="1" />
+        <text x="160" y="327" fill="#22d3ee" font-size="8" font-weight="600" text-anchor="middle">Core 0: Task_BleTransmit (NimBLE)</text>
+        <text x="160" y="341" fill="#94a3b8" font-size="8" text-anchor="middle">512-Packet Circular Ringbuffer (+9 dBm)</text>
+
+        <text x="160" y="368" fill="#64748b" font-size="8" text-anchor="middle">3-Tap Sync Spikes &gt; 2.5g Trigger Flag</text>
+
+        <!-- Haptic Actuator & Mechanical Pod -->
+        <rect x="35" y="410" width="250" height="110" rx="6" fill="#0f172a" />
+        <rect x="35" y="410" width="250" height="110" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5" />
+        <text x="160" y="435" fill="white" font-size="11" font-weight="600" text-anchor="middle">Haptics &amp; Mechanical Clamp</text>
+        <text x="160" y="453" fill="#94a3b8" font-size="9" text-anchor="middle">1027 Coin ERM Vibration Motor</text>
+        <text x="160" y="470" fill="#fb7185" font-size="8" text-anchor="middle">2N2222 Driver + 1N4007 Flyback Diode</text>
+        <text x="160" y="488" fill="#fbbf24" font-size="8" text-anchor="middle">Quick-Lock Cam Clamp + 2mm Silicone</text>
+        <text x="160" y="505" fill="#64748b" font-size="8" text-anchor="middle">4x N52 Neodymium Magnets (Anti-Slip)</text>
+
+        <!-- Strict 20-Byte BLE Contract Badge -->
+        <rect x="35" y="550" width="250" height="85" rx="6" fill="#0f172a" />
+        <rect x="35" y="550" width="250" height="85" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5" />
+        <text x="160" y="575" fill="white" font-size="11" font-weight="600" text-anchor="middle">Strict 20-Byte BLE GATT Struct</text>
+        <text x="160" y="595" fill="#22d3ee" font-size="8" text-anchor="middle">uint32_t ts | int16_t quat[4]</text>
+        <text x="160" y="610" fill="#22d3ee" font-size="8" text-anchor="middle">int16_t a_dyn[3] | uint8_t bat | flags</text>
+        <text x="160" y="625" fill="#34d399" font-size="8" text-anchor="middle">Zero packet fragmentation (Single ATT MTU)</text>
+
+        <!-- BOUNDARY: Mobile Edge Application (Engineers 3 & 4) -->
+        <rect x="340" y="30" width="460" height="620" rx="10" fill="rgba(8, 51, 68, 0.08)" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="6,3" />
+        <text x="352" y="52" fill="#22d3ee" font-size="10" font-weight="700">MOBILE EDGE COMPUTING (SAMSUNG A52 / ANDROID 14)</text>
+
+        <!-- Vision Ingestion Tier -->
+        <rect x="360" y="80" width="200" height="110" rx="6" fill="#0f172a" />
+        <rect x="360" y="80" width="200" height="110" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5" />
+        <text x="460" y="105" fill="white" font-size="11" font-weight="600" text-anchor="middle">Android CameraX (30 FPS)</text>
+        <text x="460" y="123" fill="#94a3b8" font-size="9" text-anchor="middle">YUV_420_888 Native Ingestion</text>
+        <text x="460" y="140" fill="#22d3ee" font-size="8" text-anchor="middle">RTMPose-s (SimCC) Mobile GPU</text>
+        <text x="460" y="158" fill="#34d399" font-size="8" text-anchor="middle">17 Keypoints (13.2 ms Latency)</text>
+        <text x="460" y="176" fill="#64748b" font-size="8" text-anchor="middle">Adaptive One-Euro Temporal Filter</text>
+
+        <!-- Temporal Alignment & Spline Interpolation -->
+        <rect x="580" y="80" width="200" height="110" rx="6" fill="#0f172a" />
+        <rect x="580" y="80" width="200" height="110" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5" />
+        <text x="680" y="105" fill="white" font-size="11" font-weight="600" text-anchor="middle">Cubic Spline Temporal Sync</text>
+        <text x="680" y="123" fill="#94a3b8" font-size="9" text-anchor="middle">30 FPS Vision ∩ 100 Hz IMU</text>
+        <text x="680" y="140" fill="#a78bfa" font-size="8" text-anchor="middle">3-Tap Spike Sub-10ms Clock Lock</text>
+        <text x="680" y="158" fill="#34d399" font-size="8" text-anchor="middle">Resampled to Uniform T=64 Frames</text>
+        <text x="680" y="176" fill="#64748b" font-size="8" text-anchor="middle">Bounded Inter-Set Ring Buffer</text>
+
+        <!-- Cross-Modal Attention Fusion Core -->
+        <rect x="360" y="220" width="420" height="140" rx="6" fill="#0f172a" />
+        <rect x="360" y="220" width="420" height="140" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5" />
+        <text x="570" y="245" fill="white" font-size="12" font-weight="700" text-anchor="middle">Cross-Modal Multi-Head Attention Fusion</text>
+        
+        <rect x="375" y="260" width="180" height="45" rx="4" fill="rgba(15, 23, 42, 0.6)" stroke="#22d3ee" stroke-width="1" />
+        <text x="465" y="278" fill="#22d3ee" font-size="8" font-weight="600" text-anchor="middle">ST-GCN Skeletal Branch</text>
+        <text x="465" y="293" fill="#94a3b8" font-size="8" text-anchor="middle">Spatial-temporal body graph</text>
+
+        <rect x="585" y="260" width="180" height="45" rx="4" fill="rgba(15, 23, 42, 0.6)" stroke="#34d399" stroke-width="1" />
+        <text x="675" y="278" fill="#34d399" font-size="8" font-weight="600" text-anchor="middle">1D-TCN Inertial Branch</text>
+        <text x="675" y="293" fill="#94a3b8" font-size="8" text-anchor="middle">Inertial acceleration vectors</text>
+
+        <text x="570" y="325" fill="#a78bfa" font-size="9" text-anchor="middle">Inertial queries attend to vision keys (Resolves visual occlusion &amp; depth ambiguity)</text>
+        <text x="570" y="345" fill="#34d399" font-size="8" text-anchor="middle">Outputs Fused Latent Representation [B, 64, 128]</text>
+
+        <!-- Real-Time Kinematics & VBT Engine -->
+        <rect x="360" y="390" width="420" height="130" rx="6" fill="#0f172a" />
+        <rect x="360" y="390" width="420" height="130" rx="6" fill="rgba(120, 53, 15, 0.4)" stroke="#fbbf24" stroke-width="1.5" />
+        <text x="570" y="415" fill="white" font-size="11" font-weight="600" text-anchor="middle">Deterministic Biomechanical Engine &amp; VBT</text>
+        
+        <rect x="375" y="430" width="180" height="40" rx="4" fill="rgba(15, 23, 42, 0.6)" stroke="#fbbf24" stroke-width="1" />
+        <text x="465" y="447" fill="#fbbf24" font-size="8" font-weight="600" text-anchor="middle">Mean Propulsive Velocity (MPV)</text>
+        <text x="465" y="461" fill="#94a3b8" font-size="8" text-anchor="middle">Velocity Loss % Fatigue Trigger</text>
+
+        <rect x="585" y="430" width="180" height="40" rx="4" fill="rgba(15, 23, 42, 0.6)" stroke="#fb7185" stroke-width="1" />
+        <text x="675" y="447" fill="#fb7185" font-size="8" font-weight="600" text-anchor="middle">Mahalanobis Anomaly Distance</text>
+        <text x="675" y="461" fill="#94a3b8" font-size="8" text-anchor="middle">Personalized baseline form scoring</text>
+
+        <text x="570" y="495" fill="#94a3b8" font-size="8" text-anchor="middle">Checks: Knee Valgus, Spinal Flexion, Asymmetric Press Tilt, Bar Bounce</text>
+        <text x="570" y="510" fill="#34d399" font-size="8" text-anchor="middle">Off-By-One Repetition Segmentation &gt; 96% OBOA</text>
+
+        <!-- On-Device Local SQLite Storage -->
+        <rect x="360" y="540" width="420" height="95" rx="6" fill="#0f172a" />
+        <rect x="360" y="540" width="420" height="95" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5" />
+        <text x="570" y="565" fill="white" font-size="11" font-weight="600" text-anchor="middle">On-Device Privacy &amp; SQLCipher</text>
+        <text x="570" y="585" fill="#34d399" font-size="8" text-anchor="middle">Zero raw camera frames saved or transmitted (100% Volatile YUV Memory)</text>
+        <text x="570" y="602" fill="#94a3b8" font-size="8" text-anchor="middle">Encrypted Local SQLite Database (AES-256 Room DB)</text>
+        <text x="570" y="618" fill="#64748b" font-size="8" text-anchor="middle">Exports anonymized kinematic JSON to local server upon WiFi connection</text>
+
+        <!-- BOUNDARY: Local Server Infrastructure (Host 'jarvis') -->
+        <rect x="830" y="30" width="250" height="620" rx="10" fill="rgba(120, 53, 15, 0.08)" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="6,3" />
+        <text x="842" y="52" fill="#fbbf24" font-size="10" font-weight="700">LOCAL SERVER 'JARVIS'</text>
+
+        <!-- PostgreSQL TimescaleDB -->
+        <rect x="845" y="80" width="220" height="110" rx="6" fill="#0f172a" />
+        <rect x="845" y="80" width="220" height="110" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5" />
+        <text x="955" y="105" fill="white" font-size="11" font-weight="600" text-anchor="middle">PostgreSQL + TimescaleDB</text>
+        <text x="955" y="123" fill="#94a3b8" font-size="9" text-anchor="middle">Longitudinal Session Data</text>
+        <text x="955" y="140" fill="#a78bfa" font-size="8" text-anchor="middle">FastAPI Docker Service</text>
+        <text x="955" y="158" fill="#34d399" font-size="8" text-anchor="middle">1080 EGP BOM Total</text>
+        <text x="955" y="176" fill="#64748b" font-size="8" text-anchor="middle">Zero Ongoing Cloud Subscriptions</text>
+
+        <!-- Local SLM Coach (GTX 1050 Ti / Ollama) -->
+        <rect x="845" y="220" width="220" height="140" rx="6" fill="#0f172a" />
+        <rect x="845" y="220" width="220" height="140" rx="6" fill="rgba(120, 53, 15, 0.4)" stroke="#fbbf24" stroke-width="1.5" />
+        <text x="955" y="245" fill="white" font-size="11" font-weight="600" text-anchor="middle">Local SLM Coaching Engine</text>
+        <text x="955" y="265" fill="#fbbf24" font-size="9" text-anchor="middle">Ollama / DeepSeek-R1-1.5B</text>
+        <text x="955" y="283" fill="#94a3b8" font-size="8" text-anchor="middle">Translates structured kinematic</text>
+        <text x="955" y="298" fill="#94a3b8" font-size="8" text-anchor="middle">JSON into natural coaching cues</text>
+        <text x="955" y="318" fill="#fb7185" font-size="8" text-anchor="middle">Zero math / Zero medical diagnosis</text>
+        <text x="955" y="338" fill="#64748b" font-size="8" text-anchor="middle">Runs locally on CPU / 1050 Ti</text>
+
+        <!-- Institutional Living Memory Bank -->
+        <rect x="845" y="390" width="220" height="130" rx="6" fill="#0f172a" />
+        <rect x="845" y="390" width="220" height="130" rx="6" fill="rgba(52, 211, 153, 0.3)" stroke="#34d399" stroke-width="1.5" />
+        <text x="955" y="415" fill="white" font-size="11" font-weight="600" text-anchor="middle">Institutional Memory Bank</text>
+        <text x="955" y="435" fill="#34d399" font-size="8" text-anchor="middle">`memory-bank/` (6 documents)</text>
+        <text x="955" y="450" fill="#94a3b8" font-size="8" text-anchor="middle">`mock_ble_packet_generator.py`</text>
+        <text x="955" y="465" fill="#94a3b8" font-size="8" text-anchor="middle">AST RepoMap (repomap.py)</text>
+        <text x="955" y="480" fill="#94a3b8" font-size="8" text-anchor="middle">Antigravity `GEMINI.md` Rules</text>
+        <text x="955" y="495" fill="#64748b" font-size="8" text-anchor="middle">Codebase Graph (.codebase-memory)</text>
+
+        <!-- Graduation Demo Protocol (7 Minutes) -->
+        <rect x="845" y="540" width="220" height="95" rx="6" fill="#0f172a" />
+        <rect x="845" y="540" width="220" height="95" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5" />
+        <text x="955" y="565" fill="white" font-size="11" font-weight="600" text-anchor="middle">7-Min Defense Demo Protocol</text>
+        <text x="955" y="583" fill="#fb7185" font-size="8" text-anchor="middle">0:00 Hand prototype to examiners</text>
+        <text x="955" y="598" fill="#34d399" font-size="8" text-anchor="middle">2:00 3 Clean Squats (Parallel depth)</text>
+        <text x="955" y="613" fill="#fbbf24" font-size="8" text-anchor="middle">3:30 Valgus Knee fault + Haptic buzz</text>
+
+        <!-- Inter-System Connectors -->
+        <!-- ESP32 BLE -> Android -->
+        <line x1="285" y1="290" x2="335" y2="290" stroke="#34d399" stroke-width="2" marker-end="url(#arrow-emerald)" />
+        <text x="310" y="280" fill="#34d399" font-size="8" text-anchor="middle">BLE 5.0</text>
+        <text x="310" y="305" fill="#94a3b8" font-size="7" text-anchor="middle">20B/10ms</text>
+
+        <!-- Android -> Local Server -->
+        <line x1="800" y1="280" x2="840" y2="280" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrow-amber)" />
+        <text x="820" y="272" fill="#fbbf24" font-size="8" text-anchor="middle">WiFi</text>
+      </svg>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="cards">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot emerald"></div>
+          <h3>Zyad's Core Deliverables (Engineer 2)</h3>
+        </div>
+        <ul>
+          <li>• <strong>Dual-Core FreeRTOS C++ Firmware:</strong> Core 1 samples 100 Hz I2C, Core 0 transmits NimBLE 20-byte binary packets.</li>
+          <li>• <strong>Onboard Gravity Subtraction:</strong> Madgwick filter (β=0.041) rotates raw acceleration into the inertial world frame.</li>
+          <li>• <strong>Hardware Abstraction (HAL):</strong> Clean switch between production Bosch BMI270 and breadboard MPU-6050.</li>
+          <li>• <strong>3D Quick-Lock Barbell Clamp:</strong> 50mm cam clamp with 2mm silicone grip &amp; N52 neodymium magnets.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Multimodal AI &amp; VBT Intelligence</h3>
+        </div>
+        <ul>
+          <li>• <strong>Cross-Attention Fusion:</strong> Inertial queries attend to 30 FPS vision keypoints, bounding occlusion drift.</li>
+          <li>• <strong>Velocity Loss Fatigue Tracking:</strong> Mean Propulsive Velocity (MPV) detects 10–20% velocity drops in real time.</li>
+          <li>• <strong>Mahalanobis Form Scoring:</strong> Dynamic anomaly distance scoring accounts for individual lifter anthropometry.</li>
+          <li>• <strong>3-Tap Clock Synchronization:</strong> Locks cross-modal temporal offset with sub-10ms precision.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
+          <h3>Procurement &amp; Academic Feasibility</h3>
+        </div>
+        <ul>
+          <li>• <strong>BOM Target (~1,080 EGP / ~$22.50):</strong> Benchmarked against Cairo Bab El-Louk electronics retail suppliers.</li>
+          <li>• <strong>Day-1 Mock Generator Live:</strong> `mock_ble_packet_generator.py` unblocks Engineers 3 &amp; 4 immediately.</li>
+          <li>• <strong>Local Workstation Hosting:</strong> Database and local coaching LLM run directly on `jarvis` with 0 cloud cost.</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="footer">
+      MR-Fit 2.0 • Mansoura University AI Engineering Graduation Project • Engineer 2 Lead: Zyad Elfeki • Living Memory Bank Active
+    </p>
+  </div>
+</body>
+</html>
